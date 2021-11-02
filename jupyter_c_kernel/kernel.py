@@ -280,7 +280,20 @@ class CKernel(Kernel):
             magics['cflags'] += ['-lm']
 
         return magics, code
+    def _exec_gcc_(self,source_filename,magics):
+        with self.new_temp_file(suffix='.out') as binary_file:
+            p,outfile = self.compile_with_gcc(source_filename, binary_file.name, magics['cflags'], magics['ldflags'])
+            while p.poll() is None:
+                p.write_contents()
+            p.write_contents()
+            binary_file.name=os.path.join(os.path.abspath(''),outfile)
+            if p.returncode != 0:  # Compilation failed
+                self._write_to_stderr("[C kernel] GCC exited with code {}, the executable will not be executed".format(p.returncode))
 
+                # delete source files before exit
+                os.remove(source_filename)
+                os.remove(binary_file.name)
+        return p.returncode,binary_file.name
     def do_execute(self, code, silent, store_history=True,
                    user_expressions=None, allow_stdin=True):
  
@@ -298,34 +311,24 @@ class CKernel(Kernel):
         with self.new_temp_file(suffix='.c') as source_file:
             source_file.write(code)
             source_file.flush()
+            newsrcfilename=source_file.name
 
             # if len(magics['norun'])>0:
             if len(magics['file'])>0:
-                jfile = magics['file'][0]
+                newsrcfilename = magics['file'][0]
                 # for x in jfile: self._write_to_stderr("file " + x + " ")
-                os.rename(source_file.name,os.path.join(os.path.abspath(''),jfile))
-                source_file.name=os.path.join(os.path.abspath(''),jfile)
+                os.rename(source_file.name,os.path.join(os.path.abspath(''),newsrcfilename))
+                newsrcfilename=os.path.join(os.path.abspath(''),newsrcfilename)
                 self._write_to_stdout("[C kernel] Info:file created successfully\n")
             if len(magics['norun'])>0:
                 if len(magics['file'])<1:
                     self._write_to_stderr("[C kernel] Warning: no file name parameter\n")
                 return {'status': 'ok', 'execution_count': self.execution_count, 'payload': [], 'user_expressions': {}}
-            with self.new_temp_file(suffix='.out') as binary_file:
-                p,outfile = self.compile_with_gcc(source_file.name, binary_file.name, magics['cflags'], magics['ldflags'])
-                while p.poll() is None:
-                    p.write_contents()
-                p.write_contents()
-                binary_file.name=os.path.join(os.path.abspath(''),outfile)
-                if p.returncode != 0:  # Compilation failed
-                    self._write_to_stderr("[C kernel] GCC exited with code {}, the executable will not be executed".format(p.returncode))
-
-                    # delete source files before exit
-                    os.remove(source_file.name)
-                    os.remove(binary_file.name)
-
-                    return {'status': 'ok', 'execution_count': self.execution_count, 'payload': [],'user_expressions': {}}
+            returncode,binary_filename=self._exec_gcc_(newsrcfilename,magics)
+            if returncode!=0:
+                return {'status': 'ok', 'execution_count': self.execution_count, 'payload': [],'user_expressions': {}}
         # p = self.create_jupyter_subprocess([self.master_path, binary_file.name] + magics['args'])
-        p = self.create_jupyter_subprocess([binary_file.name] + magics['args'])
+        p = self.create_jupyter_subprocess([binary_filename] + magics['args'])
         while p.poll() is None:
             p.write_contents()
 
@@ -337,8 +340,8 @@ class CKernel(Kernel):
 
         # now remove the files we have just created
         if len(magics['file'])<1:
-            os.remove(source_file.name)
-            os.remove(binary_file.name)
+            os.remove(newsrcfilename)
+            os.remove(binary_filename)
 
         if p.returncode != 0:
             self._write_to_stderr("[C kernel] Executable exited with code {}".format(p.returncode))
