@@ -156,7 +156,7 @@ class CKernel(Kernel):
         # cflags = ['-std=c99', '-Wdeclaration-after-statement', '-Wvla', '-fPIC', '-shared', '-rdynamic'] + cflags
         # cflags = ['-std=iso9899:199409', '-pedantic', '-fPIC', '-shared', '-rdynamic'] + cflags
         # cflags = ['-std=c99', '-pedantic', '-fPIC', '-shared', '-rdynamic'] + cflags
-        cflags = ['-std=c11', '-pedantic', '-fPIC', '-shared', '-rdynamic'] + cflags
+        # cflags = ['-std=c11', '-pedantic', '-fPIC', '-shared', '-rdynamic'] + cflags
         if self.linkMaths:
             cflags = cflags + ['-lm']
         if self.wError:
@@ -247,7 +247,8 @@ class CKernel(Kernel):
                     return {'status': 'ok', 'execution_count': self.execution_count, 'payload': [],
                             'user_expressions': {}}
 
-        p = self.create_jupyter_subprocess([self.master_path, binary_file.name] + magics['args'])
+        # p = self.create_jupyter_subprocess([self.master_path, binary_file.name] + magics['args'])
+        p = self.create_jupyter_subprocess([binary_file.name] + magics['args'])
         while p.poll() is None:
             p.write_contents()
 
