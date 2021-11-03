@@ -232,7 +232,9 @@ class CKernel(Kernel):
         magics = {'cflags': [],
                   'ldflags': [],
                   'file': [],
-                  'norun': [],
+                  'onlycsfile': [],
+                  'onlyrungcc': [],
+                  'onlyruncmd': [],
                   'include': [],
                   'command': [],
                   'args': []}
@@ -242,10 +244,15 @@ class CKernel(Kernel):
         for line in code.splitlines():
             orgline=line
             if line.strip().startswith('//%'):
-                if line.strip()[3:] == "norun":
-                    magics['norun'] += ['true']
+                if line.strip()[3:] == "onlycsfile":
+                    magics['onlycsfile'] += ['true']
                     continue
-
+                elif line.strip()[3:] == "onlyrungcc":
+                    magics['onlyrungcc'] += ['true']
+                    continue
+                elif line.strip()[3:] == "onlyruncmd":
+                    magics['onlyruncmd'] += ['true']
+                    continue
                 key, value = line.strip()[3:].split(":", 2)
                 key = key.strip().lower()
 
@@ -313,9 +320,12 @@ class CKernel(Kernel):
                    user_expressions=None, allow_stdin=True):
  
         magics, code = self._filter_magics(code)
-        if len(magics['norun'])<1:
+        
+        if len(magics['onlyruncmd'])>0:
+            return {'status': 'ok', 'execution_count': self.execution_count, 'payload': [],'user_expressions': {}}
+        
+        if len(magics['onlycsfile'])<1:
             magics, code = self._add_main(magics, code)
-
         # magics, code = self._add_main(magics, code)
 
         # replace stdio with wrapped version
@@ -328,20 +338,24 @@ class CKernel(Kernel):
             source_file.flush()
             newsrcfilename=source_file.name
 
-            # if len(magics['norun'])>0:
+            # if len(magics['onlycsfile'])>0:
             if len(magics['file'])>0:
                 newsrcfilename = magics['file'][0]
                 # for x in jfile: self._write_to_stderr("file " + x + " ")
                 os.rename(source_file.name,os.path.join(os.path.abspath(''),newsrcfilename))
                 newsrcfilename=os.path.join(os.path.abspath(''),newsrcfilename)
                 self._write_to_stdout("[C kernel] Info:file created successfully\n")
-            if len(magics['norun'])>0:
+            if len(magics['onlycsfile'])>0:
                 if len(magics['file'])<1:
                     self._write_to_stderr("[C kernel] Warning: no file name parameter\n")
                 return {'status': 'ok', 'execution_count': self.execution_count, 'payload': [], 'user_expressions': {}}
             returncode,binary_filename=self._exec_gcc_(newsrcfilename,magics)
             if returncode!=0:
                 return {'status': 'ok', 'execution_count': self.execution_count, 'payload': [],'user_expressions': {}}
+        
+        if len(magics['onlyrungcc'])>0:
+            self._write_to_stderr("[C kernel] Info: only run gcc \n")
+            return {'status': 'ok', 'execution_count': self.execution_count, 'payload': [],'user_expressions': {}}
         # p = self.create_jupyter_subprocess([self.master_path, binary_file.name] + magics['args'])
         p = self.create_jupyter_subprocess([binary_filename] + magics['args'])
         while p.poll() is None:
