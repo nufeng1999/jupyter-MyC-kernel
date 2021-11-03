@@ -173,12 +173,12 @@ class CKernel(Kernel):
             p.write_contents()
 
             if p.returncode != 0:
-                self._write_to_stderr("[C kernel] Error: Executable command exited with code {}".format(p.returncode))
+                self._write_to_stderr("[C kernel] Error: Executable command exited with code {}\n".format(p.returncode))
             else:
-                self._write_to_stdout("[C kernel] Info: command success.")
+                self._write_to_stdout("[C kernel] Info: command success.\n")
             return
         except Exception as e:
-            self._write_to_stderr("[C kernel] Error:Executable command error! "+str(e))
+            self._write_to_stderr("[C kernel] Error:Executable command error! "+str(e)+"\n")
     
     def create_jupyter_subprocess(self, cmd,cwd=None,shell=False):
         return RealTimeSubprocess(cmd,
@@ -271,7 +271,7 @@ class CKernel(Kernel):
                         actualCode += line + '\n'
                 elif key == "command":
                     # for flag in value.split():
-                    magics[key] += [value]
+                    magics[key] = [value]
                     if len(magics['command'])>0:
                         self.do_shell_command(magics['command'])
                 elif key == "args":
