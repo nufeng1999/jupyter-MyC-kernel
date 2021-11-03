@@ -6,6 +6,8 @@ import re
 import subprocess
 import tempfile
 import os
+import sys
+import traceback
 import os.path as path
 
 
@@ -16,7 +18,7 @@ class RealTimeSubprocess(subprocess.Popen):
 
     inputRequest = "<inputRequest>"
 
-    def __init__(self, cmd, write_to_stdout, write_to_stderr, read_from_stdin):
+    def __init__(self, cmd, write_to_stdout, write_to_stderr, read_from_stdin,cwd=None,shell=False):
         """
         :param cmd: the command to execute
         :param write_to_stdout: a callable that will be called with chunks of data from stdout
@@ -26,7 +28,7 @@ class RealTimeSubprocess(subprocess.Popen):
         self._write_to_stderr = write_to_stderr
         self._read_from_stdin = read_from_stdin
 
-        super().__init__(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE, bufsize=0)
+        super().__init__(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE, bufsize=0,cwd=cwd,shell=shell)
 
         self._stdout_queue = Queue()
         self._stdout_thread = Thread(target=RealTimeSubprocess._enqueue_output, args=(self.stdout, self._stdout_queue))
@@ -88,7 +90,7 @@ class RealTimeSubprocess(subprocess.Popen):
 class CKernel(Kernel):
     implementation = 'jupyter_c_kernel'
     implementation_version = '1.0'
-    language = 'c'
+    language = 'C'
     language_version = 'C11'
     language_info = {'name': 'text/x-csrc',
                      'mimetype': 'text/x-csrc',
@@ -155,21 +157,28 @@ class CKernel(Kernel):
                 filecode+=' '*spacecount + t
         return filecode
    
-    def do_shell_command(self,commands=None,cwd=None):
-        p = self.create_jupyter_subprocess(['dart']+commands,cwd=os.path.abspath(''),shell=False)
-        while p.poll() is None:
+    def do_shell_command(self,commands,cwd=None,shell=True):
+        # self._write_to_stdout(''.join((' '+ str(s) for s in commands)))
+        try:
+            p = RealTimeSubprocess(commands,
+                                  self._write_to_stdout,
+                                  self._write_to_stderr,
+                                  self._read_from_stdin,cwd,shell)
+            while p.poll() is None:
+                p.write_contents()
+            # wait for threads to finish, so output is always shown
+            p._stdout_thread.join()
+            p._stderr_thread.join()
+
             p.write_contents()
-        # wait for threads to finish, so output is always shown
-        p._stdout_thread.join()
-        p._stderr_thread.join()
 
-        p.write_contents()
-
-        if p.returncode != 0:
-            self._write_to_stderr("[Dart kernel] Executable exited with code {}".format(p.returncode))
-        else:
-            self._write_to_stdout("[Dart kernel] Info:dart command success.")
-        return
+            if p.returncode != 0:
+                self._write_to_stderr("[C kernel] Error: Executable command exited with code {}".format(p.returncode))
+            else:
+                self._write_to_stdout("[C kernel] Info: command success.")
+            return
+        except Exception as e:
+            self._write_to_stderr("[C kernel] Error:Executable command error! "+str(e))
     
     def create_jupyter_subprocess(self, cmd,cwd=None,shell=False):
         return RealTimeSubprocess(cmd,
@@ -204,14 +213,19 @@ class CKernel(Kernel):
             cflags = ['-DREAD_ONLY_FILE_SYSTEM'] + cflags
         if self.bufferedOutput:
             cflags = ['-DBUFFERED_OUTPUT'] + cflags
-        if '-o' not in cflags:
-            outfile=binary_filename
-        else:
-            outfile=cflags[cflags.index('-o')+1]
-            binary_filename=outfile
+
+        for s in cflags:
+                if s.startswith('-o'):
+                    if(len(s)>2):
+                        outfile=s[2:]
+                    else:
+                        outfile=cflags[cflags.index('-o')+1]
+                        if outfile.startswith('-'):
+                            outfile=binary_filename
+                binary_filename=outfile
         args = ['gcc', source_filename] + cflags + ['-o', binary_filename] + ldflags
-        # self._write_to_stdout(''.join((' '+ str(s) for s in args)))
-        return self.create_jupyter_subprocess(args),binary_filename
+        # self._write_to_stdout(''.join((' '+ str(s) for s in args))+"\n")
+        return self.create_jupyter_subprocess(args),binary_filename,args
 
     def _filter_magics(self, code):
 
@@ -249,10 +263,10 @@ class CKernel(Kernel):
                         line=self.readcodefile(magics['include'][0],index1)
                         actualCode += line + '\n'
                 elif key == "command":
-                    for flag in value.split():
-                        magics[key] += [flag]
+                    # for flag in value.split():
+                    magics[key] += [value]
                     if len(magics['command'])>0:
-                        self.do_dart_command(magics['command'])
+                        self.do_shell_command(magics['command'])
                 elif key == "args":
                     # Split arguments respecting quotes
                     for argument in re.findall(r'(?:[^\s,"]|"(?:\\.|[^"])*")+', value):
@@ -282,12 +296,13 @@ class CKernel(Kernel):
         return magics, code
     def _exec_gcc_(self,source_filename,magics):
         with self.new_temp_file(suffix='.out') as binary_file:
-            p,outfile = self.compile_with_gcc(source_filename, binary_file.name, magics['cflags'], magics['ldflags'])
+            p,outfile,gcccmd = self.compile_with_gcc(source_filename, binary_file.name, magics['cflags'], magics['ldflags'])
             while p.poll() is None:
                 p.write_contents()
             p.write_contents()
             binary_file.name=os.path.join(os.path.abspath(''),outfile)
             if p.returncode != 0:  # Compilation failed
+                self._write_to_stdout(''.join((' '+ str(s) for s in gcccmd))+"\n")
                 self._write_to_stderr("[C kernel] GCC exited with code {}, the executable will not be executed".format(p.returncode))
 
                 # delete source files before exit
