@@ -103,7 +103,7 @@ class CKernel(Kernel):
             "int main(int argc, char* argv[], char** env){\n"
 
     main_foot = "\nreturn 0;\n}"
-
+    kernelstop=False
     def __init__(self, *args, **kwargs):
         super(CKernel, self).__init__(*args, **kwargs)
         self._allow_stdin = True
@@ -127,7 +127,8 @@ class CKernel(Kernel):
         for file in self.files:
             if(os.path.exists(file)):
                 os.remove(file)
-        os.remove(self.master_path)
+        if(os.path.exists(self.master_path)):
+            os.remove(self.master_path)
 
     def new_temp_file(self, **kwargs):
         """Create a new temp file to be deleted when the kernel shuts down"""
@@ -150,7 +151,10 @@ class CKernel(Kernel):
     def readcodefile(self,filename,spacecount=0):
         filecode=''
         codelist1=None
-        with open(os.path.join(os.path.abspath(''),filename), 'r') as codef1:
+        filenm=os.path.join(os.path.abspath(''),filename);
+        if not os.path.exists(filenm):
+            return filecode;
+        with open(filenm, 'r') as codef1:
             codelist1 = codef1.readlines()
         if len(codelist1)>0:
             for t in codelist1:
@@ -202,7 +206,7 @@ class CKernel(Kernel):
         # cflags = ['-std=iso9899:199409', '-pedantic', '-fPIC', '-shared', '-rdynamic'] + cflags
         # cflags = ['-std=c99', '-pedantic', '-fPIC', '-shared', '-rdynamic'] + cflags
         # cflags = ['-std=c11', '-pedantic', '-fPIC', '-shared', '-rdynamic'] + cflags
-        outfile=''
+        outfile=binary_filename
         if self.linkMaths:
             cflags = cflags + ['-lm']
         if self.wError:
@@ -240,7 +244,6 @@ class CKernel(Kernel):
                   'args': []}
 
         actualCode = ''
-
         for line in code.splitlines():
             orgline=line
             if line.strip().startswith('//%'):
@@ -253,6 +256,10 @@ class CKernel(Kernel):
                 elif line.strip()[3:] == "onlyruncmd":
                     magics['onlyruncmd'] += ['true']
                     continue
+                
+                findObj= re.search( r':(.*)',line)
+                if not findObj or len(findObj.group(0))<2:
+                    continue
                 key, value = line.strip()[3:].split(":", 2)
                 key = key.strip().lower()
 
@@ -260,14 +267,19 @@ class CKernel(Kernel):
                     for flag in value.split():
                         magics[key] += [flag]
                 elif key == "file":
-                    for flag in value.split():
-                        magics[key] += [flag]
+                    if len(value)>0:
+                        magics[key] = value[re.search(r'[^/]',value).start():]
+                    else:
+                        magics[key] ='newfile'
                 elif key == "include":
-                    for flag in value.split():
-                        magics[key] += [flag]
+                    if len(value)>0:
+                        magics[key] = value
+                    else:
+                        magics[key] =''
+                        continue
                     if len(magics['include'])>0:
                         index1=line.find('//%')
-                        line=self.readcodefile(magics['include'][0],index1)
+                        line=self.readcodefile(magics['include'],index1)
                         actualCode += line + '\n'
                 elif key == "command":
                     # for flag in value.split():
@@ -285,7 +297,6 @@ class CKernel(Kernel):
             # keep lines which did not contain magics
             else:
                 actualCode += line + '\n'
-
         return magics, actualCode
     # check whether int main() is specified, if not add it around the code
     # also add common magics like -lm
@@ -324,7 +335,7 @@ class CKernel(Kernel):
         if len(magics['onlyruncmd'])>0:
             return {'status': 'ok', 'execution_count': self.execution_count, 'payload': [],'user_expressions': {}}
         
-        if len(magics['onlycsfile'])<1:
+        if len(magics['onlycsfile'])<1 :
             magics, code = self._add_main(magics, code)
         # magics, code = self._add_main(magics, code)
 
@@ -336,19 +347,25 @@ class CKernel(Kernel):
         with self.new_temp_file(suffix='.c') as source_file:
             source_file.write(code)
             source_file.flush()
-            newsrcfilename=source_file.name
-
-            # if len(magics['onlycsfile'])>0:
+            newsrcfilename=source_file.name 
+            # Generate new src file
+            
             if len(magics['file'])>0:
-                newsrcfilename = magics['file'][0]
-                # for x in jfile: self._write_to_stderr("file " + x + " ")
-                os.rename(source_file.name,os.path.join(os.path.abspath(''),newsrcfilename))
-                newsrcfilename=os.path.join(os.path.abspath(''),newsrcfilename)
-                self._write_to_stdout("[C kernel] Info:file created successfully\n")
+                newsrcfilename = magics['file']
+                newsrcfilename = os.path.join(os.path.abspath(''),newsrcfilename)
+                if os.path.exists(newsrcfilename):
+                    newsrcfilename +=".new.c"
+                if not os.path.exists(os.path.dirname(newsrcfilename)) :
+                    os.makedirs(os.path.dirname(newsrcfilename))
+                os.rename(source_file.name,newsrcfilename)
+                self._write_to_stdout("[C kernel] Info:file "+ newsrcfilename +" created successfully\n")
+
             if len(magics['onlycsfile'])>0:
                 if len(magics['file'])<1:
                     self._write_to_stderr("[C kernel] Warning: no file name parameter\n")
                 return {'status': 'ok', 'execution_count': self.execution_count, 'payload': [], 'user_expressions': {}}
+            
+            # Generate executable file
             returncode,binary_filename=self._exec_gcc_(newsrcfilename,magics)
             if returncode!=0:
                 return {'status': 'ok', 'execution_count': self.execution_count, 'payload': [],'user_expressions': {}}
@@ -360,7 +377,9 @@ class CKernel(Kernel):
         p = self.create_jupyter_subprocess([binary_filename] + magics['args'])
         while p.poll() is None:
             p.write_contents()
-
+            if self.kernelstop:
+                p.kill()
+            
         # wait for threads to finish, so output is always shown
         p._stdout_thread.join()
         p._stderr_thread.join()
@@ -368,8 +387,9 @@ class CKernel(Kernel):
         p.write_contents()
 
         # now remove the files we have just created
-        if len(magics['file'])<1:
-            os.remove(newsrcfilename)
+        if(os.path.exists(source_file.name)):
+            os.remove(source_file.name)
+        if(os.path.exists(binary_filename)):
             os.remove(binary_filename)
 
         if p.returncode != 0:
@@ -378,4 +398,6 @@ class CKernel(Kernel):
 
     def do_shutdown(self, restart):
         """Cleanup the created source code files and executables when shutting down the kernel"""
+        self.kernelstop=True
         self.cleanup_files()
+    
