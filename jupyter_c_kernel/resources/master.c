@@ -20,12 +20,12 @@ int main(int argc, char **argv, char **envp)
         return EXIT_FAILURE;
     }
     dlerror();
-    main_t usermain = dlsym(userhandle, "main");
+    main_t usermain = dlsym(userhandle, argv[2]);
     if ((error = dlerror()) != NULL) {
         fprintf(stderr, "%s: %s\n", argv[0], error);
         return EXIT_FAILURE;
     }
 
     /* Call Users main, but make master.c invisible by removing first argument */
-    return usermain(argc-1, argv+1, envp);
+    return usermain(argc-1, argv+2, envp);
 }

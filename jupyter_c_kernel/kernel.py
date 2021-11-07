@@ -2,14 +2,57 @@ from queue import Queue
 from threading import Thread
 
 from ipykernel.kernelbase import Kernel
+from pexpect import replwrap, EOF
+import pexpect
+import signal
+
 import re
+import signal
 import subprocess
 import tempfile
 import os
 import sys
 import traceback
 import os.path as path
+import codecs
 
+class IREPLWrapper(replwrap.REPLWrapper):
+    """A subclass of REPLWrapper that gives incremental output
+    specifically for gdb_kernel.
+
+    The parameters are the same as for REPLWrapper, except for one
+    extra parameter:
+
+    :param line_output_callback: a callback method to receive each batch
+      of incremental output. It takes one string parameter.
+    """
+    def __init__(self, cmd_or_spawn, orig_prompt, prompt_change,
+                 extra_init_cmd=None, line_output_callback=None):
+        self.line_output_callback = line_output_callback
+        replwrap.REPLWrapper.__init__(self, cmd_or_spawn, orig_prompt,
+                                      prompt_change,extra_init_cmd=extra_init_cmd)
+
+    def _expect_prompt(self, timeout=-1):
+        if timeout == None:
+            # "None" means we are executing code from a Jupyter cell by way of the run_command
+            # in the do_execute() code below, so do incremental output.
+            while True:
+                pos = self.child.expect_exact([self.prompt, self.continuation_prompt, u'\r\n'],
+                                              timeout=None)
+                if pos == 2:
+                    # End of line received
+                    self.line_output_callback(self.child.before + '...\n')
+                else:
+                    if len(self.child.before) != 0:
+                        # prompt received, but partial line precedes it
+                        self.line_output_callback(self.child.before)
+                    break
+        else:
+            # Otherwise, use existing non-incremental code
+            pos = replwrap.REPLWrapper._expect_prompt(self, timeout=timeout)
+
+        # Prompt received, so return normally
+        return pos
 
 class RealTimeSubprocess(subprocess.Popen):
     """
@@ -27,7 +70,8 @@ class RealTimeSubprocess(subprocess.Popen):
         self._write_to_stdout = write_to_stdout
         self._write_to_stderr = write_to_stderr
         self._read_from_stdin = read_from_stdin
-
+        # self._read_from_stdin = subprocess.PIPE
+        self.PIPE= subprocess.PIPE
         super().__init__(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE, bufsize=0,cwd=cwd,shell=shell)
 
         self._stdout_queue = Queue()
@@ -86,7 +130,6 @@ class RealTimeSubprocess(subprocess.Popen):
             else:
                 self._write_to_stdout(contents)
 
-
 class CKernel(Kernel):
     implementation = 'jupyter_c_kernel'
     implementation_version = '1.0'
@@ -141,7 +184,7 @@ class CKernel(Kernel):
 
     def _write_to_stdout(self, contents):
         self.send_response(self.iopub_socket, 'stream', {'name': 'stdout', 'text': contents})
-
+    
     def _write_to_stderr(self, contents):
         self.send_response(self.iopub_socket, 'stream', {'name': 'stderr', 'text': contents})
 
@@ -239,8 +282,11 @@ class CKernel(Kernel):
                   'onlycsfile': [],
                   'onlyrungcc': [],
                   'onlyruncmd': [],
+                  'dlrun': [],
                   'include': [],
                   'command': [],
+                  'runmode': [], #default real,interactive mode is repl
+                  'rungdb': [],
                   'args': []}
 
         actualCode = ''
@@ -256,7 +302,14 @@ class CKernel(Kernel):
                 elif line.strip()[3:] == "onlyruncmd":
                     magics['onlyruncmd'] += ['true']
                     continue
+                elif line.strip()[3:] == "rungdb":
+                    magics['rungdb'] += ['true']
+                    continue
+                elif line.strip()[3:] == "dlrun":
+                    magics['dlrun'] += ['true']
+                    continue
                 
+
                 findObj= re.search( r':(.*)',line)
                 if not findObj or len(findObj.group(0))<2:
                     continue
@@ -266,6 +319,11 @@ class CKernel(Kernel):
                 if key in ['ldflags', 'cflags']:
                     for flag in value.split():
                         magics[key] += [flag]
+                elif key == "runmode":
+                    if len(value)>0:
+                        magics[key] = value[re.search(r'[^/]',value).start():]
+                    else:
+                        magics[key] ='real'
                 elif key == "file":
                     if len(value)>0:
                         magics[key] = value[re.search(r'[^/]',value).start():]
@@ -327,14 +385,208 @@ class CKernel(Kernel):
                 os.remove(source_filename)
                 os.remove(binary_file.name)
         return p.returncode,binary_file.name
+    
+    def process_output(self, output):
+        if not self.silent:
+
+            # Send standard output
+            stream_content = {'name': 'stdout', 'text': output}
+            self.send_response(self.iopub_socket, 'stream', stream_content) 
+
+    def repl_start(self,command,args=[]):
+        # Signal handlers are inherited by forked processes, and we can't easily
+        # reset it from the subprocess. Since kernelapp ignores SIGINT except in
+        # message handlers, we need to temporarily reset the SIGINT handler here
+        # so that bash and its children are interruptible.
+        sig = signal.signal(signal.SIGINT, signal.SIG_DFL)
+        try:
+            if hasattr(self, 'replcmdwrapper'):
+                self._write_to_stdout("-----------replcmdwrapper property already owned!\n")
+                return {'status': 'ok', 'execution_count': self.execution_count, 'payload': [],'user_expressions': {}} 
+        finally:
+            pass
+        try:
+
+            self.replchild = pexpect.spawn(command, args, echo=False,
+                                  encoding='utf-8')
+            # self.replchild.expect ('\n')
+            self._write_to_stdout("----pexpect.spawn OK\n")
+            self.replcmdwrapper = IREPLWrapper(self.replchild, orig_prompt=u'\r\n',prompt_change=None,
+                                            extra_init_cmd=None,line_output_callback=self.process_output)
+            self.replcmdwrapper.child.expect([u'\n',pexpect.EOF,pexpect.TIMEOUT])
+            # self._write_to_stdout(self.replcmdwrapper.child.
+            self._write_to_stdout("-----------repl cmd mode wating!\n")
+        except Exception as e:
+            self._write_to_stdout("-----------IREPLWrapper err "+str(e)+"!\n")
+            exitcode = 1
+        finally:
+            signal.signal(signal.SIGINT, sig)
+        return {'status': 'ok', 'execution_count': self.execution_count,
+                    'payload': [], 'user_expressions': {}}
+    def repl_execute(self, code,silent, store_history=True,
+                   user_expressions=None, allow_stdin=True):
+        self.silent = silent
+        if not code.strip():
+            return {'status': 'ok', 'execution_count': self.execution_count,
+                    'payload': [], 'user_expressions': {}}
+
+        interrupted = False
+        try:
+            # Note: timeout=None tells IREPLWrapper to do incremental
+            # output.  Also note that the return value from
+            # run_command is not needed, because the output was
+            # already sent by IREPLWrapper.
+            self._write_to_stdout("run_command send replcmd:"+code+"\n-------\n")
+            self.replcmdwrapper.child.send(code.rstrip())
+            # self.replcmdwrapper.run_command(code.rstrip(), timeout=None)
+        except KeyboardInterrupt:
+            self.replcmdwrapper.child.sendintr()
+            interrupted = True
+            self.replcmdwrapper._expect_prompt()
+            output = self.replcmdwrapper.child.before
+            self.process_output(output)
+        except EOF:
+            output = self.replcmdwrapper.child.before + 'Restarting REPLCMD'
+            # self.repl_start(command, args)
+            self.process_output(output)
+
+        if interrupted:
+            return {'status': 'abort', 'execution_count': self.execution_count}
+
+        # try:
+        #     self._write_to_stdout("run_command send replcmd: echo $?\n-------\n")
+        #     exitcode = int(self.replcmdwrapper.run_command('echo $?').rstrip())
+        # except Exception:
+        #     exitcode = 1
+
+        # if exitcode:
+        #     error_content = {'execution_count': self.execution_count,
+        #                      'ename': '', 'evalue': str(exitcode), 'traceback': []}
+
+        #     self.send_response(self.iopub_socket, 'error', error_content)
+        #     error_content['status'] = 'error'
+        #     return error_content
+        # else:
+        return {'status': 'ok', 'execution_count': self.execution_count,
+                    'payload': [], 'user_expressions': {}}
+    def repl_sendcmd(self, code, silent, store_history=True,
+                   user_expressions=None, allow_stdin=True,magics=None):
+        try:
+            # _encoder = codecs.getincrementalencoder("utf-8")('strict')
+            # b =_encoder.encode(code, final=False)
+            # self.subprocess.stdin.write(b)
+            # self.subprocess.write_contents()
+            # self.replcmdwrapper.child.send(code)
+            # self.replcmdwrapper.set_prompt('\r\n','\n')
+            self.replcmdwrapper.run_command(code.replace('\r',''), timeout=None)
+            # self.replcmdwrapper.child.sendeof()
+            self._write_to_stdout("-----------repl cmd mode2 OK\n")
+        except Exception as e:
+            # self.do_shutdown(False)
+            self._write_to_stdout("-----------sendline err "+str(e)+"!\n")
+
+        return {'status': 'ok', 'execution_count': self.execution_count, 'payload': [],'user_expressions': {}}
+        # else:
+        #     self._write_to_stderr("-----------repl cmd mode error!\n")
+        #     return {'execution_count': self.execution_count,
+        #                  'ename': '', 'evalue': str(-1), 'traceback': []}
+
+    def _start_gdb(self):
+        # Signal handlers are inherited by forked processes, and we can't easily
+        # reset it from the subprocess. Since kernelapp ignores SIGINT except in
+        # message handlers, we need to temporarily reset the SIGINT handler here
+        # so that bash and its children are interruptible.
+        sig = signal.signal(signal.SIGINT, signal.SIG_DFL)
+        try:
+            if hasattr(self, 'gdbwrapper'):
+                return
+        finally:
+            pass
+        try:
+            # self._write_to_stdout("------exec gdb-----\n")
+            child = pexpect.spawn('gdb', ['-q'], echo=False,encoding='utf-8')
+            self.gdbwrapper = IREPLWrapper(child, u'(gdb)', prompt_change=None,
+                                            extra_init_cmd='set pagination off',
+                                            line_output_callback=self.process_output)
+        except Exception as e:
+            # self._write_to_stdout("-----------IREPLWrapper err "+str(e)+"!\n")
+            exitcode = 1
+        finally:
+            signal.signal(signal.SIGINT, sig)
+    def do_replexecutegdb(self, code, silent, store_history=True,
+                   user_expressions=None, allow_stdin=True):
+        self.silent = silent
+        if not code.strip():
+            return {'status': 'ok', 'execution_count': self.execution_count,
+                    'payload': [], 'user_expressions': {}}
+
+        interrupted = False
+        try:
+            # Note: timeout=None tells IREPLWrapper to do incremental
+            # output.  Also note that the return value from
+            # run_command is not needed, because the output was
+            # already sent by IREPLWrapper.
+            self.gdbwrapper.run_command(code.rstrip(), timeout=None)
+        except KeyboardInterrupt:
+            self.gdbwrapper.child.sendintr()
+            interrupted = True
+            self.gdbwrapper._expect_prompt()
+            output = self.gdbwrapper.child.before
+            self.process_output(output)
+        except EOF:
+            output = self.gdbwrapper.child.before + 'Restarting GDB'
+            self._start_gdb()
+            self.process_output(output)
+
+        if interrupted:
+            return {'status': 'abort', 'execution_count': self.execution_count}
+
+        try:
+            if code.rstrip().startswith('shell'):
+                exitcode = int(self.gdbwrapper.run_command('shell echo $?').rstrip())
+            else:
+                exitcode = int(self.gdbwrapper.run_command('echo $?').rstrip())
+        except Exception:
+            exitcode = 1
+
+        if exitcode:
+            error_content = {'execution_count': self.execution_count,
+                             'ename': '', 'evalue': str(exitcode), 'traceback': []}
+
+            self.send_response(self.iopub_socket, 'error', error_content)
+            error_content['status'] = 'error'
+            return error_content
+        else:
+            return {'status': 'ok', 'execution_count': self.execution_count,
+                    'payload': [], 'user_expressions': {}}
+    def replgdb_sendcmd(self,code,silent, store_history=True,
+                   user_expressions=None, allow_stdin=True):
+        self._start_gdb()
+        return self.do_replexecutegdb( code.replace('//%rungdb', ''), silent, store_history,
+                   user_expressions, False)
+
     def do_execute(self, code, silent, store_history=True,
                    user_expressions=None, allow_stdin=True):
- 
+        self.silent = silent
         magics, code = self._filter_magics(code)
-        
+
+        ############# run gdb and send command begin
+        if len(magics['rungdb'])>0:
+            return self.replgdb_sendcmd(code,silent, store_history,
+                   user_expressions, allow_stdin)
+        ############# run gdb and send command
+        #############send replcmd's command
+        if magics['runmode']=='repl':
+            if hasattr(self, 'replcmdwrapper'):
+                if self.replcmdwrapper :
+                    return self.repl_sendcmd(code, silent, store_history,
+                        user_expressions, allow_stdin,magics)
+        #FIXME:
+        #############send replcmd's command end
+        ############# only run command mark
         if len(magics['onlyruncmd'])>0:
             return {'status': 'ok', 'execution_count': self.execution_count, 'payload': [],'user_expressions': {}}
-        
+        ############# only create source file
         if len(magics['onlycsfile'])<1 :
             magics, code = self._add_main(magics, code)
         # magics, code = self._add_main(magics, code)
@@ -369,17 +621,34 @@ class CKernel(Kernel):
             returncode,binary_filename=self._exec_gcc_(newsrcfilename,magics)
             if returncode!=0:
                 return {'status': 'ok', 'execution_count': self.execution_count, 'payload': [],'user_expressions': {}}
-        
+        ############# only run gcc，no not run executable file
         if len(magics['onlyrungcc'])>0:
             self._write_to_stderr("[C kernel] Info: only run gcc \n")
             return {'status': 'ok', 'execution_count': self.execution_count, 'payload': [],'user_expressions': {}}
-        # p = self.create_jupyter_subprocess([self.master_path, binary_file.name] + magics['args'])
-        p = self.create_jupyter_subprocess([binary_filename] + magics['args'])
+        
+        ################# repl mode run code files
+        #FIXME:
+        if magics['runmode']=='repl':
+            return self.repl_start(binary_filename,magics['args'])
+        ############################################
+
+        #################dynamically load and execute code
+        #FIXME:
+        if len(magics['dlrun'])>0:
+            p = self.create_jupyter_subprocess([self.master_path, binary_filename] + magics['args'])
+        ############################################
+        else:
+            p = self.create_jupyter_subprocess([binary_filename] + magics['args'])
+        self.subprocess=p
+
         while p.poll() is None:
             p.write_contents()
-            if self.kernelstop:
-                p.kill()
-            
+        #     p.send_signal
+        #     # b =_encoder.encode("codew", final=False)
+        #     # self.subprocess.stdin.write(b)
+            # if self.kernelstop:
+            #     p.kill()
+        p.write_contents()
         # wait for threads to finish, so output is always shown
         p._stdout_thread.join()
         p._stderr_thread.join()
@@ -389,11 +658,11 @@ class CKernel(Kernel):
         # now remove the files we have just created
         if(os.path.exists(source_file.name)):
             os.remove(source_file.name)
-        if(os.path.exists(binary_filename)):
-            os.remove(binary_filename)
+        # if(os.path.exists(binary_filename)):
+            # os.remove(binary_filename)
 
-        if p.returncode != 0:
-            self._write_to_stderr("[C kernel] Executable exited with code {}".format(p.returncode))
+        # if p.returncode != 0:
+            # self._write_to_stderr("[C kernel] Executable exited with code {}".format(p.returncode))
         return {'status': 'ok', 'execution_count': self.execution_count, 'payload': [], 'user_expressions': {}}
 
     def do_shutdown(self, restart):
