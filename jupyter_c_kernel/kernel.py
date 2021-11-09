@@ -1,3 +1,4 @@
+from math import exp
 from queue import Queue
 from threading import Thread
 
@@ -227,23 +228,29 @@ class CKernel(Kernel):
         except Exception as e:
             self._write_to_stderr("[C kernel] Error:Executable command error! "+str(e)+"\n")
     
-    def create_jupyter_subprocess(self, cmd,cwd=None,shell=False):
-        return RealTimeSubprocess(cmd,
+    def create_jupyter_subprocess(self, cmd,cwd=None,shell=False,env=None):
+        try:
+            return RealTimeSubprocess(cmd,
                                   self._write_to_stdout,
                                   self._write_to_stderr,
-                                  self._read_from_stdin,cwd,shell)
-    
+                                  self._read_from_stdin,cwd,shell,env)
+        except Exception as e:
+            self._write_to_stdout("RealTimeSubprocess err:"+str(e))
+            raise
     def generate_file(self, source_filename, binary_filename, cflags=None, ldflags=None):
 
         return
     
-    def create_jupyter_subprocess(self, cmd,env=None):
-        return RealTimeSubprocess(cmd,
-                                  self._write_to_stdout,
-                                  self._write_to_stderr,
-                                  self._read_from_stdin,
-                                  env=env)
-
+    # def create_jupyter_subprocess(self, cmd,env=None):
+    #     try:
+    #         return RealTimeSubprocess(cmd,
+    #                               self._write_to_stdout,
+    #                               self._write_to_stderr,
+    #                               self._read_from_stdin,
+    #                               env=env)
+    #     except Exception as e:
+    #         self._write_to_stdout(str(e))
+    #         raise
     def compile_with_gcc(self, source_filename, binary_filename, cflags=None, ldflags=None,env=None):
         # cflags = ['-std=c89', '-pedantic', '-fPIC', '-shared', '-rdynamic'] + cflags
         # cflags = ['-std=c99', '-Wdeclaration-after-statement', '-Wvla', '-fPIC', '-shared', '-rdynamic'] + cflags
@@ -271,12 +278,12 @@ class CKernel(Kernel):
                         if outfile.startswith('-'):
                             outfile=binary_filename
                 binary_filename=outfile
-        args = ['gcc', source_filename] + cflags + ['-o', binary_filename] + ldflags
+        args = ['gcc', source_filename] + ['-o', binary_filename]+ cflags  + ldflags
         self._write_to_stdout(''.join((' '+ str(s) for s in args))+"\n")
-        return self.create_jupyter_subprocess(args,env),binary_filename,args
+        return self.create_jupyter_subprocess(args,env=env),binary_filename,args
     def _filter_env(self, envstr):
         if envstr is None or len(envstr.strip())<1:
-            return None
+            return os.environ
         envstr=str(str(envstr.split("|")).split("=")).replace(" ","").replace("\'","").replace("\"","").replace("[","").replace("]","").replace("\\","")
         env_list=envstr.split(",")
         for i in range(0,len(env_list),2):
@@ -293,7 +300,7 @@ class CKernel(Kernel):
                   'dlrun': [],
                   'include': [],
                   'command': [],
-                  'env': [],
+                  'env':None,
                   'runmode': [], #default real,interactive mode is repl
                   'rungdb': [],
                   'args': []}
@@ -355,7 +362,7 @@ class CKernel(Kernel):
                         self.do_shell_command(magics['command'])
                 elif key == "env":
                     envdict=self._filter_env(value)
-                    magics[key] =envdict
+                    magics[key] =dict(envdict)
                 elif key == "args":
                     # Split arguments respecting quotes
                     for argument in re.findall(r'(?:[^\s,"]|"(?:\\.|[^"])*")+', value):
@@ -390,7 +397,7 @@ class CKernel(Kernel):
             p.write_contents()
             binary_file.name=os.path.join(os.path.abspath(''),outfile)
             if p.returncode != 0:  # Compilation failed
-                self._write_to_stdout(''.join((' '+ str(s) for s in gcccmd))+"\n")
+                self._write_to_stdout(''.join(('Error: '+ str(s) for s in gcccmd))+"\n")
                 self._write_to_stderr("[C kernel] GCC exited with code {}, the executable will not be executed".format(p.returncode))
 
                 # delete source files before exit
