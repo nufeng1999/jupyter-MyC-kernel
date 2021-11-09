@@ -61,7 +61,7 @@ class RealTimeSubprocess(subprocess.Popen):
 
     inputRequest = "<inputRequest>"
 
-    def __init__(self, cmd, write_to_stdout, write_to_stderr, read_from_stdin,cwd=None,shell=False):
+    def __init__(self, cmd, write_to_stdout, write_to_stderr, read_from_stdin,cwd=None,shell=False,env=None):
         """
         :param cmd: the command to execute
         :param write_to_stdout: a callable that will be called with chunks of data from stdout
@@ -72,7 +72,7 @@ class RealTimeSubprocess(subprocess.Popen):
         self._read_from_stdin = read_from_stdin
         # self._read_from_stdin = subprocess.PIPE
         self.PIPE= subprocess.PIPE
-        super().__init__(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE, bufsize=0,cwd=cwd,shell=shell)
+        super().__init__(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE, bufsize=0,cwd=cwd,shell=shell,env=env)
 
         self._stdout_queue = Queue()
         self._stdout_thread = Thread(target=RealTimeSubprocess._enqueue_output, args=(self.stdout, self._stdout_queue))
@@ -237,13 +237,14 @@ class CKernel(Kernel):
 
         return
     
-    def create_jupyter_subprocess(self, cmd):
+    def create_jupyter_subprocess(self, cmd,env=None):
         return RealTimeSubprocess(cmd,
                                   self._write_to_stdout,
                                   self._write_to_stderr,
-                                  self._read_from_stdin)
+                                  self._read_from_stdin,
+                                  env=env)
 
-    def compile_with_gcc(self, source_filename, binary_filename, cflags=None, ldflags=None):
+    def compile_with_gcc(self, source_filename, binary_filename, cflags=None, ldflags=None,env=None):
         # cflags = ['-std=c89', '-pedantic', '-fPIC', '-shared', '-rdynamic'] + cflags
         # cflags = ['-std=c99', '-Wdeclaration-after-statement', '-Wvla', '-fPIC', '-shared', '-rdynamic'] + cflags
         # cflags = ['-std=iso9899:199409', '-pedantic', '-fPIC', '-shared', '-rdynamic'] + cflags
@@ -271,9 +272,16 @@ class CKernel(Kernel):
                             outfile=binary_filename
                 binary_filename=outfile
         args = ['gcc', source_filename] + cflags + ['-o', binary_filename] + ldflags
-        # self._write_to_stdout(''.join((' '+ str(s) for s in args))+"\n")
-        return self.create_jupyter_subprocess(args),binary_filename,args
-
+        self._write_to_stdout(''.join((' '+ str(s) for s in args))+"\n")
+        return self.create_jupyter_subprocess(args,env),binary_filename,args
+    def _filter_env(self, envstr):
+        if envstr is None or len(envstr.strip())<1:
+            return None
+        envstr=str(str(envstr.split("|")).split("=")).replace(" ","").replace("\'","").replace("\"","").replace("[","").replace("]","").replace("\\","")
+        env_list=envstr.split(",")
+        for i in range(0,len(env_list),2):
+            os.environ.setdefault(env_list[i],env_list[i+1])
+        return os.environ
     def _filter_magics(self, code):
 
         magics = {'cflags': [],
@@ -285,6 +293,7 @@ class CKernel(Kernel):
                   'dlrun': [],
                   'include': [],
                   'command': [],
+                  'env': [],
                   'runmode': [], #default real,interactive mode is repl
                   'rungdb': [],
                   'args': []}
@@ -344,6 +353,9 @@ class CKernel(Kernel):
                     magics[key] = [value]
                     if len(magics['command'])>0:
                         self.do_shell_command(magics['command'])
+                elif key == "env":
+                    envdict=self._filter_env(value)
+                    magics[key] =envdict
                 elif key == "args":
                     # Split arguments respecting quotes
                     for argument in re.findall(r'(?:[^\s,"]|"(?:\\.|[^"])*")+', value):
@@ -372,7 +384,7 @@ class CKernel(Kernel):
         return magics, code
     def _exec_gcc_(self,source_filename,magics):
         with self.new_temp_file(suffix='.out') as binary_file:
-            p,outfile,gcccmd = self.compile_with_gcc(source_filename, binary_file.name, magics['cflags'], magics['ldflags'])
+            p,outfile,gcccmd = self.compile_with_gcc(source_filename, binary_file.name, magics['cflags'], magics['ldflags'],magics['env'])
             while p.poll() is None:
                 p.write_contents()
             p.write_contents()
@@ -635,10 +647,10 @@ class CKernel(Kernel):
         #################dynamically load and execute code
         #FIXME:
         if len(magics['dlrun'])>0:
-            p = self.create_jupyter_subprocess([self.master_path, binary_filename] + magics['args'])
+            p = self.create_jupyter_subprocess([self.master_path, binary_filename] + magics['args'],env=magics['env'])
         ############################################
         else:
-            p = self.create_jupyter_subprocess([binary_filename] + magics['args'])
+            p = self.create_jupyter_subprocess([binary_filename] + magics['args'],env=magics['env'])
         self.subprocess=p
 
         while p.poll() is None:
