@@ -94,7 +94,7 @@ class RealTimeSubprocess(subprocess.Popen):
             queue.put(line)
         stream.close()
 
-    def write_contents(self):
+    def write_contents(self,magics=None):
         """
         Write the available content from stdin and stderr where specified when the instance was created
         :return:
@@ -118,10 +118,10 @@ class RealTimeSubprocess(subprocess.Popen):
             # if there is input request, make output and then
             # ask frontend for input
             start = contents.find(self.__class__.inputRequest)
-            if(start >= 0):
+            if(start >= 0 or len(magics['showinput'])>0):
                 contents = contents.replace(self.__class__.inputRequest, '')
                 if(len(contents) > 0):
-                    self._write_to_stdout(contents)
+                    self._write_to_stdout(contents,magics)
                 readLine = ""
                 while(len(readLine) == 0):
                     readLine = self._read_from_stdin()
@@ -129,7 +129,7 @@ class RealTimeSubprocess(subprocess.Popen):
                 readLine += "\n"
                 self.stdin.write(readLine.encode())
             else:
-                self._write_to_stdout(contents)
+                self._write_to_stdout(contents,magics)
 
 class CKernel(Kernel):
     implementation = 'jupyter-MyC-kernel'
@@ -183,8 +183,15 @@ class CKernel(Kernel):
         self.files.append(file.name)
         return file
 
-    def _write_to_stdout(self, contents):
-        self.send_response(self.iopub_socket, 'stream', {'name': 'stdout', 'text': contents})
+    def _write_display_data(self,mimetype='text/html',contents=""):
+
+        self.send_response(self.iopub_socket, 'display_data', {'data': {mimetype:contents}, 'metadata': {mimetype:{}}})
+
+    def _write_to_stdout(self,contents,magics=None):
+        if magics !=None and len(magics['outputtype'])>0:
+            self._write_display_data(mimetype=magics['outputtype'],contents=contents)
+        else:
+            self.send_response(self.iopub_socket, 'stream', {'name': 'stdout', 'text': contents})
     
     def _write_to_stderr(self, contents):
         self.send_response(self.iopub_socket, 'stream', {'name': 'stderr', 'text': contents})
@@ -298,8 +305,10 @@ class CKernel(Kernel):
                   'onlyrungcc': [],
                   'onlyruncmd': [],
                   'dlrun': [],
+                  'showinput': [],
                   'include': [],
                   'command': [],
+                  'outputtype':'text/plain',
                   'env':None,
                   'runmode': [], #default real,interactive mode is repl
                   'rungdb': [],
@@ -324,7 +333,9 @@ class CKernel(Kernel):
                 elif line.strip()[3:] == "dlrun":
                     magics['dlrun'] += ['true']
                     continue
-                
+                elif line.strip()[3:] == "showinput":
+                    magics['showinput'] += ['true']
+                    continue
 
                 findObj= re.search( r':(.*)',line)
                 if not findObj or len(findObj.group(0))<2:
@@ -363,6 +374,8 @@ class CKernel(Kernel):
                 elif key == "env":
                     envdict=self._filter_env(value)
                     magics[key] =dict(envdict)
+                elif key == "outputtype":
+                    magics[key]=value
                 elif key == "args":
                     # Split arguments respecting quotes
                     for argument in re.findall(r'(?:[^\s,"]|"(?:\\.|[^"])*")+', value):
@@ -588,7 +601,7 @@ class CKernel(Kernel):
                    user_expressions=None, allow_stdin=True):
         self.silent = silent
         magics, code = self._filter_magics(code)
-
+        
         ############# run gdb and send command begin
         if len(magics['rungdb'])>0:
             return self.replgdb_sendcmd(code,silent, store_history,
@@ -661,18 +674,18 @@ class CKernel(Kernel):
         self.subprocess=p
 
         while p.poll() is None:
-            p.write_contents()
+            p.write_contents(magics)
         #     p.send_signal
         #     # b =_encoder.encode("codew", final=False)
         #     # self.subprocess.stdin.write(b)
             # if self.kernelstop:
             #     p.kill()
-        p.write_contents()
+        p.write_contents(magics)
         # wait for threads to finish, so output is always shown
         p._stdout_thread.join()
         p._stderr_thread.join()
 
-        p.write_contents()
+        p.write_contents(magics)
 
         # now remove the files we have just created
         if(os.path.exists(source_file.name)):
