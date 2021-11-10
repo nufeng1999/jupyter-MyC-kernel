@@ -38,10 +38,10 @@ Works only on Linux and OS X. Windows is not supported yet. If you want to use t
 ### Step-by-step
 
 ```bash
-git clone https://github.com/XaverKlemenschits/jupyter-c-kernel.git
-cd jupyter-c-kernel
+git clone https://github.com/nufeng1999/jupyter-MyC-kernel.git
+cd jupyter-MyC-kernel
 pip install -e .  # for system install: sudo install .
-cd jupyter_c_kernel && install_c_kernel --user # for sys install: sudo install_c_kernel
+cd jupyter_MyC_kernel && install_MyC_kernel --user # for sys install: sudo install_c_kernel
 # now you can start the notebook
 jupyter notebook
 ```

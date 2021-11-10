@@ -132,7 +132,7 @@ class RealTimeSubprocess(subprocess.Popen):
                 self._write_to_stdout(contents)
 
 class CKernel(Kernel):
-    implementation = 'jupyter_c_kernel'
+    implementation = 'jupyter-MyC-kernel'
     implementation_version = '1.0'
     language = 'C'
     language_version = 'C11'
@@ -205,13 +205,13 @@ class CKernel(Kernel):
                 filecode+=' '*spacecount + t
         return filecode
    
-    def do_shell_command(self,commands,cwd=None,shell=True):
+    def do_shell_command(self,commands,cwd=None,shell=True,env=True):
         # self._write_to_stdout(''.join((' '+ str(s) for s in commands)))
         try:
             p = RealTimeSubprocess(commands,
                                   self._write_to_stdout,
                                   self._write_to_stderr,
-                                  self._read_from_stdin,cwd,shell)
+                                  self._read_from_stdin,cwd,shell,env=env)
             while p.poll() is None:
                 p.write_contents()
             # wait for threads to finish, so output is always shown
@@ -359,7 +359,7 @@ class CKernel(Kernel):
                     # for flag in value.split():
                     magics[key] = [value]
                     if len(magics['command'])>0:
-                        self.do_shell_command(magics['command'])
+                        self.do_shell_command(magics['command'],env=magics['env'])
                 elif key == "env":
                     envdict=self._filter_env(value)
                     magics[key] =dict(envdict)

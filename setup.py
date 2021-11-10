@@ -1,18 +1,18 @@
 from setuptools import setup
 
-setup(name='jupyter_c_kernel',
-      version='1.2.1',
+setup(name='jupyter_MyC_kernel',
+      version='0.0.1',
       description='Minimalistic C kernel for Jupyter',
-      author='Brendan Rius',
-      author_email='ping@brendan-rius.com',
+      author='nufeng',
+      author_email='18478162@qq.com',
       license='MIT',
       classifiers=[
           'License :: OSI Approved :: MIT License',
       ],
-      url='https://github.com/brendan-rius/jupyter-c-kernel/',
-      download_url='https://github.com/brendan-rius/jupyter-c-kernel/tarball/1.2.1',
-      packages=['jupyter_c_kernel'],
-      scripts=['jupyter_c_kernel/install_c_kernel'],
+      url='https://github.com/nufeng1999/jupyter-MyC-kernel/',
+      download_url='https://github.com/nufeng1999/jupyter-MyC-kernel/tarball/0.0.1',
+      packages=['jupyter_MyC_kernel'],
+      scripts=['jupyter_MyC_kernel/install_MyC_kernel'],
       keywords=['jupyter', 'notebook', 'kernel', 'c'],
       include_package_data=True
       )
