@@ -139,7 +139,6 @@ class IREPLWrapper(replwrap.REPLWrapper):
                         else:
                             if self.startflag :
                                 continue
-                            self.line_output_callback("\nexpect_exact break2 :"+ str(pos) +"\n")
                             run_time = time.time() - cmdstart_time
                             if run_time > 10:
                                 break
@@ -246,13 +245,14 @@ class CKernel(Kernel):
             "int main(int argc, char* argv[], char** env){\n"
 
     main_foot = "\nreturn 0;\n}"
-    kernelstop=False
-    
+
+    silent=None
     jinja2_env = Environment()
     g_rtsps={}
     g_chkreplexit=True
     def __init__(self, *args, **kwargs):
         super(CKernel, self).__init__(*args, **kwargs)
+        self.kernelinfo='[MyC Kernel]'
         self._allow_stdin = True
         self.readOnlyFileSystem = False
         self.bufferedOutput = True
@@ -318,6 +318,26 @@ class CKernel(Kernel):
         file = tempfile.NamedTemporaryFile(**kwargs)
         self.files.append(file.name)
         return file
+
+    def _log(self, output,level=1,outputtype='text/plain'):
+        streamname='stdout'
+        if not self.silent:
+            prestr=self.kernelinfo+' Info:'
+            if level==2:
+                prestr=self.kernelinfo+' Warning:'
+                streamname='stderr'
+            elif level==3:
+                prestr=self.kernelinfo+' Error:'
+                streamname='stderr'
+            else:
+                prestr=self.kernelinfo+' Info:'
+                streamname='stdout'
+            if len(outputtype)>0 and (level!=2 or level!=3):
+                self._write_display_data(mimetype=outputtype,contents=prestr+output)
+                return
+            # Send standard output
+            stream_content = {'name': streamname, 'text': prestr+output}
+            self.send_response(self.iopub_socket, 'stream', stream_content)
 
     def _write_display_data(self,mimetype='text/html',contents=""):
 
@@ -711,7 +731,7 @@ class CKernel(Kernel):
 
         if not x:
             code = self.main_head + code + self.main_foot
-            magics['cflags'] += ['-v','error']
+            magics['cflags'] += ['-lm']
 
         return magics, code
 
@@ -900,11 +920,7 @@ class CKernel(Kernel):
 
         while p.poll() is None:
             p.write_contents(magics)
-        #     p.send_signal
-        #     # b =_encoder.encode("codew", final=False)
-        #     # self.subprocess.stdin.write(b)
-            # if self.kernelstop:
-            #     p.kill()
+
         p.write_contents(magics)
         # wait for threads to finish, so output is always shown
         p._stdout_thread.join()
