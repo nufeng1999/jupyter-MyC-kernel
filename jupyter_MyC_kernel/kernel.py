@@ -46,7 +46,7 @@ def cleantestcode(line):
 
 
 def _is_specialID(line):
-    if line.strip().startswith('##%') or line.strip().startswith('##%'):
+    if line.strip().startswith('##%') or line.strip().startswith('//%'):
         return True
     return False
 
@@ -719,6 +719,12 @@ class CKernel(Kernel):
             # keep lines which did not contain magics
             else:
                 actualCode += line + '\n'
+        newactualCode=actualCode
+        if len(magics['file'])>0 and len(magics['noruncode'])>0:
+            newactualCode=''
+            for line in actualCode.splitlines():
+                line=cleantestcode(line)
+                newactualCode += line
         return magics, actualCode
 
 
