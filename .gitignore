@@ -7,3 +7,9 @@ MANIFEST
 .ipynb_checkpoints/
 *.egg-info/
 venv/
+.vscode/
+test/
+test*
+*.bak
+*.old
+*old.*
