@@ -5,6 +5,9 @@ from ipykernel.kernelbase import Kernel
 from pexpect import replwrap, EOF
 from jinja2 import Environment, PackageLoader, select_autoescape,Template
 from abc import ABCMeta, abstractmethod
+from typing import List, Dict, Tuple, Sequence
+from shutil import copyfile
+from .ISpecialID import IStag,IDtag,IBtag,ITag
 import pexpect
 import signal
 import typing 
@@ -329,6 +332,25 @@ class CKernel(Kernel):
             li= [i for i in li if i != '']
             env_dict[str(li[0])]=li[1]
         return env_dict
+    def _fileshander(self,files:List,srcfilename,magics)->str:
+        index=-1
+        fristfile=srcfilename
+        for newsrcfilename in files:
+            index=index+1
+            newsrcfilename = os.path.join(os.path.abspath(''),newsrcfilename)
+            if os.path.exists(newsrcfilename):
+                if magics!=None and len(magics['overwritefile'])<1:
+                    newsrcfilename +=".new.py"
+            if not os.path.exists(os.path.dirname(newsrcfilename)) :
+                os.makedirs(os.path.dirname(newsrcfilename))
+            if index==0:
+                os.rename(srcfilename,newsrcfilename)
+                fristfile=newsrcfilename
+                files[0]=newsrcfilename
+            else:
+                self._write_to_stdout("copy to :"+newsrcfilename+"\n")
+                copyfile(fristfile,newsrcfilename)
+        return files[0]
     def _is_specialID(self,line):
         if line.strip().startswith('##%') or line.strip().startswith('//%'):
             return True
@@ -651,9 +673,9 @@ class CKernel(Kernel):
                         magics[key] ='real'
                 elif key == "file":
                     if len(value)>0:
-                        magics[key] = value[re.search(r'[^/]',value).start():]
+                        magics[key] += [value[re.search(r'[^/]',value).start():]]
                     else:
-                        magics[key] ='newfile'
+                        magics[key] +=['newfile']
                 elif key == "include":
                     if len(value)>0:
                         magics[key] = value
@@ -830,13 +852,7 @@ class CKernel(Kernel):
             source_file.flush()
             newsrcfilename=source_file.name 
             if len(magics['file'])>0:
-                newsrcfilename = magics['file']
-                newsrcfilename = os.path.join(os.path.abspath(''),newsrcfilename)
-                if os.path.exists(newsrcfilename):
-                    newsrcfilename +=".new.c"
-                if not os.path.exists(os.path.dirname(newsrcfilename)) :
-                    os.makedirs(os.path.dirname(newsrcfilename))
-                os.rename(source_file.name,newsrcfilename)
+                newsrcfilename = self._fileshander(magics['file'],newsrcfilename,magics)
                 self._write_to_stdout("[C kernel] Info:file "+ newsrcfilename +" created successfully\n")
             if len(magics['onlycsfile'])>0:
                 if len(magics['file'])<1:
@@ -870,3 +886,214 @@ class CKernel(Kernel):
         self.g_chkreplexit=False
         self.chk_replexit_thread.join()
         self.cleanup_files()
+    ISplugins={"0":[],
+         "1":[],
+         "2":[],
+         "3":[],
+         "4":[],
+         "5":[],
+         "6":[],
+         "7":[],
+         "8":[],
+         "9":[]}
+    IDplugins={"0":[],
+         "1":[],
+         "2":[],
+         "3":[],
+         "4":[],
+         "5":[],
+         "6":[],
+         "7":[],
+         "8":[],
+         "9":[]}
+    IBplugins={"0":[],
+         "1":[],
+         "2":[],
+         "3":[],
+         "4":[],
+         "5":[],
+         "6":[],
+         "7":[],
+         "8":[],
+         "9":[]}
+    def pluginRegister(self,obj):
+        if obj==None:return
+        try:
+            priority=obj.getPriority(obj)
+            if not inspect.isabstract(obj) and issubclass(obj,IStag):
+                self.ISplugins[str(priority)]+=[obj]
+            elif not inspect.isabstract(obj) and issubclass(obj,IDtag):
+                self.IDplugins[str(priority)]+=[obj]
+            elif not inspect.isabstract(obj) and issubclass(obj,IBtag):
+                self.IBplugins[str(priority)]+=[obj]
+        except Exception as e:
+            pass
+        pass
+    def pluginISList(self):
+        for key,value in self.ISplugins.items():
+            for obj in value:
+                print(obj.getName(obj)+"\n")
+    def pluginIDList(self):
+        for key,value in self.IDplugins.items():
+            for obj in value:
+                print(obj.getName(obj)+"\n")
+    def pluginIBList(self):
+        for key,value in self.IBplugins.items():
+            for obj in value:
+                print(obj.getName(obj)+"\n")
+    def onkernelshutdown(self,restart):
+        for key,value in self.IDplugins.items():
+            for obj in value:
+                try:
+                    newline=obj.on_shutdown(obj,restart)
+                    if newline=='':break
+                except Exception as e:
+                    pass
+                finally:pass
+    def callISp_before_compile(self,code):
+        dywtoend=False ##是否要结束整个代码执行过程
+        newcode=code
+        for key,value in self.ISplugins.items():
+            for obj in value:
+                try:
+                    newline=obj.on_before_compile(obj,code)
+                    if newline=='':break
+                except Exception as e:
+                    pass
+                finally:pass
+        return dywtoend,newcode
+    def callISp_after_compile(self,returncode,binfile):
+        dywtoend=False ##是否要结束整个代码执行过程
+        for key,value in self.ISplugins.items():
+            for obj in value:
+                try:
+                    newline=obj.on_after_compile(obj,returncode,binfile)
+                    if newline=='':break
+                except Exception as e:
+                    pass
+                finally:pass
+        return dywtoend
+    def callIBp_before_compile(self,code):
+        dywtoend=False ##是否要结束整个代码执行过程
+        newcode=code
+        for key,value in self.IBplugins.items():
+            for obj in value:
+                try:
+                    newline=obj.on_before_compile(obj,code)
+                    if newline=='':break
+                except Exception as e:
+                    pass
+                finally:pass
+        return dywtoend,newcode
+    def callIBp_after_compile(self,returncode,binfile):
+        dywtoend=False ##是否要结束整个代码执行过程
+        for key,value in self.IBplugins.items():
+            for obj in value:
+                try:
+                    newline=obj.on_after_compile(obj,returncode,binfile)
+                    if newline=='':break
+                except Exception as e:
+                    pass
+                finally:pass
+        return dywtoend
+    def callISp_before_exec(self,code)->Tuple[bool,str]:
+        dywtoend=False ##是否要结束整个代码执行过程
+        newcode=code
+        for key,value in self.ISplugins.items():
+            for obj in value:
+                try:
+                    newline=obj.on_before_exec(obj,code)
+                    if newline=='':break
+                except Exception as e:
+                    pass
+                finally:pass
+        return dywtoend,newcode
+    def callISp_after_exec(self,returncode,execfile):
+        dywtoend=False ##是否要结束整个代码执行过程
+        for key,value in self.ISplugins.items():
+            for obj in value:
+                try:
+                    newline=obj.on_after_exec(obj,returncode,execfile)
+                    if newline=='':break
+                except Exception as e:
+                    pass
+                finally:pass
+        return dywtoend
+    def callIBp_before_exec(self,code):
+        dywtoend=False ##是否要结束整个代码执行过程
+        newcode=code
+        for key,value in self.IBplugins.items():
+            for obj in value:
+                try:
+                    newline=obj.on_before_exec(obj,code)
+                    if newline=='':break
+                except Exception as e:
+                    pass
+                finally:pass
+        return dywtoend,newcode
+    def callIBp_after_exec(self,returncode,execfile):
+        dywtoend=False ##是否要结束整个代码执行过程
+        for key,value in self.IBplugins.items():
+            for obj in value:
+                try:
+                    newline=obj.on_after_exec(obj,returncode,execfile)
+                    if newline=='':break
+                except Exception as e:
+                    pass
+                finally:pass
+        return dywtoend
+    def callIBplugin(self,key,line):
+        newline=line
+        for key,value in self.IBplugins.items():
+            for obj in value:
+                try:
+                    newline=obj.on_IBpCodescanning(obj,key,newline)
+                    if newline=='':break
+                except Exception as e:
+                    pass
+                finally:pass
+    def callISplugin(self,key,line):
+        newline=line
+        for key,value in self.IDplugins.items():
+            for obj in value:
+                try:
+                    newline=obj.on_ISpCodescanning(obj,key,newline)
+                    if newline=='':break
+                except Exception as e:
+                    pass
+                finally:pass
+    def callIDplugin(self,line):
+        newline=line
+        for key,value in self.IDplugins.items():
+            for obj in value:
+                try:
+                    newline=obj.on_IDpReorgCode(obj,newline)
+                    if newline=='':break
+                except Exception as e:
+                    pass
+                finally:pass
+        return newline
+    def init_plugin(self):
+        mypath = os.getcwd()
+        idir=os.path.join(mypath,'src/')
+        sys.path.append(mypath)
+        sys.path.append(idir)
+        for f in os.listdir(idir):
+            if os.path.isfile(os.path.join(idir,f)):
+                try:
+                    name=os.path.splitext(f)[0]
+                    if name!='pluginmng' and (spec := importlib.util.find_spec(name,package='src')) is not None:
+                        module = importlib.import_module(name,package='src')
+                        for name1, obj in inspect.getmembers(module,
+                            lambda obj: 
+                                callable(obj) 
+                                and inspect.isclass(obj) 
+                                and not inspect.isabstract(obj) 
+                                and issubclass(obj,ITag)):
+                                self.pluginRegister(obj)
+                    else:
+                        pass
+                except Exception as e:
+                    pass
+                finally:
+                    pass
