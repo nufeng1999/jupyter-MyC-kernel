@@ -1132,11 +1132,11 @@ class CKernel(Kernel):
         return newline
     def init_plugin(self):
         mypath = os.path.dirname(os.path.abspath(__file__))
-        # idir=os.path.join(mypath,'src/')
+        idir=os.path.join(mypath,'../plugins')
         sys.path.append(mypath)
-        # sys.path.append(idir)
-        for f in os.listdir(mypath):
-            if os.path.isfile(os.path.join(mypath,f)):
+        sys.path.append(idir)
+        for f in os.listdir(idir):
+            if os.path.isfile(os.path.join(idir,f)):
                 try:
                     name=os.path.splitext(f)[0]
                     if name!='pluginmng' and name!='kernel' and(spec := importlib.util.find_spec(name)) is not None:
