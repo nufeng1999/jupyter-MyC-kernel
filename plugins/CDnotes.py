@@ -1,4 +1,4 @@
-from typing import Dict, Tuple, Sequence
+from typing import Dict, Tuple, Sequence,List
 from plugins.ISpecialID import IStag,IDtag,IBtag,ITag
 from jupyter_MyC_kernel.kernel import CKernel
 class MyCDnotes(IDtag):
@@ -12,10 +12,12 @@ class MyCDnotes(IDtag):
         return 'MyCDnotes'
     def getPriority(self)->int:
         return 0
-    def getIDDpbegintag(self) -> str:
-        return '/*'
-    def getIDDpendtag(self) -> str:
-        return '*/'
+    def getExcludeID(self)->List[str]:
+        return []
+    def getIDDpbegintag(self) -> List[str]:
+        return ['/*']
+    def getIDDpendtag(self) -> List[str]:
+        return ['*/']
     def setKernelobj(self,obj:CKernel):
         self.kobj=obj
         # self.kobj._write_to_stdout("setKernelobj setKernelobj setKernelobj\n")
@@ -24,15 +26,22 @@ class MyCDnotes(IDtag):
         return
     def on_IDpReorgCode(self,line) -> str:
         # self.kobj._write_to_stdout(line+" hon_IDpReorgCode\n")
+        #  self.addkey2dict(magics,'dartcmd')
         return self.cleancqm(self,line)
         # return ''
-    def on_before_compile(self,code)->Tuple[bool,str]:
+    def on_before_buildfile(self,code,magics)->Tuple[bool,str]:
         return False,''
-    def on_after_compile(self,returncode,binfile)->bool:
+    def on_after_buildfile(self,returncode,srcfile,magics)->bool:
         return False
-    def on_before_exec(self,code)->Tuple[bool,str]:
+    def on_before_compile(self,code,magics)->Tuple[bool,str]:
         return False,''
-    def on_after_exec(self,returncode,srcfile)->bool:
+    def on_after_compile(self,returncode,binfile,magics)->bool:
+        return False
+    def on_before_exec(self,code,magics)->Tuple[bool,str]:
+        return False,''
+    def on_after_exec(self,returncode,srcfile,magics)->bool:
+        return False
+    def on_after_completion(self,returncode,execfile,magics)->bool:
         return False
     def _is_cqm_begin(self,line):
         if line==None or line=='':return ''
