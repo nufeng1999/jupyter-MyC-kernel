@@ -29,6 +29,7 @@ import time
 import importlib
 import importlib.util
 import inspect
+from plugins._filter2_magics import Magics
 class IREPLWrapper(replwrap.REPLWrapper):
     def __init__(self, write_to_stdout, write_to_stderr, read_from_stdin,
                 cmd_or_spawn,replsetip, orig_prompt, prompt_change,
@@ -199,6 +200,7 @@ class CKernel(Kernel):
         self.chk_replexit_thread.daemon = True
         self.chk_replexit_thread.start()
         self.init_plugin()
+        self.mag=Magics(self,self.plugins)
     isjj2code=False
     def _is_jj2_begin(self,line):
         if line==None or line=='':return ''
@@ -362,7 +364,7 @@ class CKernel(Kernel):
                 index=index+1
                 newsrcfilename = os.path.join(os.path.abspath(''),newsrcfilename)
                 if os.path.exists(newsrcfilename):
-                    if magics!=None and len(self.addjj2codeline(magics,'overwritefile'))<1:
+                    if magics!=None and len(self.addkey2dict(magics,'overwritefile'))<1:
                         newsrcfilename +=".new.py"
                 if not os.path.exists(os.path.dirname(newsrcfilename)) :
                     os.makedirs(os.path.dirname(newsrcfilename))
@@ -628,147 +630,6 @@ class CKernel(Kernel):
             li= [i for i in li if i != '']
             os.environ.setdefault(str(li[0]),li[1])
         return os.environ
-#C _filter_magics
-    def _filter_magics(self, code):
-        magics = {'cflags': [],
-                  'ldflags': [],
-                  'dlrun': [],
-                #   'file': [],                  
-                #   'include': '',
-                #   'templatefile': [],
-                #   'test': [],
-                  'repllistpid': [],
-                  'replcmdmode': [],
-                  'replprompt': [],
-                  'replsetip': "\r\n",
-                  'replchildpid':"0",
-                #   'showpid': [],
-                #   'norunnotecmd': [],
-                #   'noruncode': [],
-                #   'command': [],
-                #   'onlycsfile': [],
-                #   'onlyrungcc': [],
-                #   'onlyruncmd': [],
-                #   'showinput': [],
-                #   'env':None,
-                  'outputtype':'text/plain',
-                  'runmode': [], #default real,interactive mode is repl
-                  'pid': [],
-                  'pidcmd': [],
-                  'args': [],
-                  'rungdb': []}
-        actualCode = ''
-        newactualCode = ''
-        for line in code.splitlines():
-            orgline=line
-            line=self.forcejj2code(line)
-            if line==None or line.strip()=='': continue
-            if self._is_specialID(line):
-                if line.strip()[3:] == "repllistpid":
-                    magics['repllistpid'] += ['true']
-                    self.repl_listpid()
-                    continue
-                elif line.strip()[3:] == "replcmdmode":
-                    magics['replcmdmode'] += ['replcmdmode']
-                    continue
-                elif line.strip()[3:] == "replprompt":
-                    magics['replprompt'] += ['replprompt']
-                    continue
-                elif line.strip()[3:] == "rungdb":
-                    magics['rungdb'] += ['true']
-                    continue
-                elif line.strip()[3:] == "dlrun":
-                    magics['dlrun'] += ['true']
-                    continue
-                else:
-                    pass
-                    #_filter_magics_i1
-                    for pkey,pvalue in self.IBplugins.items():
-                        # print( pkey +":"+str(len(pvalue))+"\n")
-                        for pobj in pvalue:
-                            newline=''
-                            try:
-                                if line.strip()[3:] in pobj.getIDBptag(pobj):
-                                    newline=pobj.on_IBpCodescanning(pobj,magics,line)
-                                    if newline=='':continue
-                            except Exception as e:
-                                pass
-                            finally:pass
-                            # if newline!=None and newline!='':
-                            #     actualCode += newline + '\n'
-                findObj= re.search( r':(.*)',line)
-                if not findObj or len(findObj.group(0))<2:
-                    continue
-                key, value = line.strip()[3:].split(":", 2)
-                key = key.strip().lower()
-                if key in ['ldflags', 'cflags']:
-                    for flag in value.split():
-                        magics[key] += [flag]
-                elif key == "runmode":
-                    if len(value)>0:
-                        magics[key] = value[re.search(r'[^/]',value).start():]
-                    else:
-                        magics[key] ='real'
-                elif key == "replsetip":
-                    magics['replsetip'] = value
-                elif key == "replchildpid":
-                    magics['replchildpid'] = value
-                elif key == "pidcmd":
-                    magics['pidcmd'] = [value]
-                    if len(magics['pidcmd'])>0:
-                        findObj= value.split(",",1)
-                        if findObj and len(findObj)>1:
-                            pid=findObj[0]
-                            cmd=findObj[1]
-                            self.send_cmd(pid=pid,cmd=cmd)
-                elif key == "outputtype":
-                    magics[key]=value
-                elif key == "args":
-                    # Split arguments respecting quotes
-                    for argument in re.findall(r'(?:[^\s,"]|"(?:\\.|[^"])*")+', value):
-                        magics['args'] += [argument.strip('"')]
-                else:
-                    pass
-                    #_filter_magics_i2
-                    for pkey,pvalue in self.ISplugins.items():
-                        # print( pkey +":"+str(len(pvalue))+"\n")
-                        for pobj in pvalue:
-                            newline=''
-                            try:
-                                if key in pobj.getIDSptag(pobj):
-                                    newline=pobj.on_ISpCodescanning(pobj,key,value,magics,line)
-                                    if newline=='':continue
-                            except Exception as e:
-                                pass
-                            finally:pass
-                            if newline!=None and newline!='':
-                                actualCode += newline + '\n'
-                    # always add empty line, so line numbers don't change
-                    # actualCode += '\n'
-            # keep lines which did not contain magics
-            else:
-                actualCode += line + '\n'
-        newactualCode=actualCode
-        #_filter_magics_pend
-        if len(self.addkey2dict(magics,'file'))>0 :
-            newactualCode=''
-            for line in actualCode.splitlines():
-                try:
-                    if len(self.addkey2dict(magics,'test'))<1:
-                        line=self.cleantestcode(line)
-                    if line=='':continue
-                    line=self.callIDplugin(line)
-                    if line=='':continue
-                    line=self.cleandqm(line)
-                    if line=='':continue
-                    line=self.cleansqm(line)
-                    if self.cleannotes(line)=='':
-                        continue
-                    else:
-                        newactualCode += line + '\n'
-                except Exception as e:
-                    self._log(str(e),3)
-        return magics, newactualCode
     def _add_main(self, magics, code):
         tmpCode = re.sub(r"//.*", "", code)
         tmpCode = re.sub(r"/\*.*?\*/", "", tmpCode, flags=re.M|re.S)
@@ -782,17 +643,17 @@ class CKernel(Kernel):
         with self.new_temp_file(suffix='.out') as binary_file:
             p,outfile,gcccmd = self.compile_with_gcc(
                 source_filename, 
-                binary_file.name, 
-                magics['cflags'], 
-                magics['ldflags'],
-                magics['env'])
+                binary_file.name,
+                self.addkey2dict(magics,'cflags'),
+                self.addkey2dict(magics,'ldflags'),
+                self.addkey2dict(magics,'env'))
             while p.poll() is None:
                 p.write_contents()
             p.write_contents()
             binary_file.name=os.path.join(os.path.abspath(''),outfile)
             if p.returncode != 0:  # Compilation failed
-                self._write_to_stdout(''.join(('Error: '+ str(s) for s in gcccmd))+"\n")
-                self._write_to_stderr("[C kernel] GCC exited with code {}, the executable will not be executed".format(p.returncode))
+                self._log(''.join(('Error: '+ str(s) for s in gcccmd))+"\n",3)
+                self._log("[C kernel] GCC exited with code {}, the executable will not be executed".format(p.returncode),3)
                 # delete source files before exit
                 os.remove(source_filename)
                 os.remove(binary_file.name)
@@ -901,7 +762,8 @@ class CKernel(Kernel):
                    user_expressions=None, allow_stdin=True):
         try:
             self.silent = silent
-            magics, code = self._filter_magics(code)
+            # magics, code = self._filter_magics(code)
+            magics, code = self.mag.filter(code)
             if len(self.addkey2dict(magics,'replcmdmode'))>0:
                 return self.send_replcmd(code, silent, store_history=True,
                     user_expressions=None, allow_stdin=False)
@@ -939,7 +801,7 @@ class CKernel(Kernel):
                 bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,2,1)
                 if bcancel_exec:
                     return {'status': 'ok', 'execution_count': self.execution_count, 'payload': [], 'user_expressions': {}}
-                if len(self.addkey2dict(magics,'file'))>1:
+                if len(self.addkey2dict(magics,'file'))>0:
                     fil_ename=magics['file'][0]
                 else: fil_ename=source_file.name
                 returncode,binary_filename=self._exec_gcc_(fil_ename,magics)
@@ -949,7 +811,7 @@ class CKernel(Kernel):
                 if bcancel_exec:return {'status': 'ok', 'execution_count': self.execution_count, 'payload': [], 'user_expressions': {}}
                 if returncode!=0:return {'status': 'ok', 'execution_count': self.execution_count, 'payload': [],'user_expressions': {}}
                 # Generate executable file :end
-            if len(magics['onlyrungcc'])>0:
+            if len(self.addkey2dict(magics,'onlyrungcc'))>0:
                 self._log("only run gcc \n")
                 return {'status': 'ok', 'execution_count': self.execution_count, 'payload': [],'user_expressions': {}}
             bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,3,1)

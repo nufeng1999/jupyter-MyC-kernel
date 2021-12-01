@@ -1,6 +1,8 @@
 from typing import Dict, Tuple, Sequence,List
 from plugins.ISpecialID import IStag,IDtag,IBtag,ITag
 import re
+import os
+from shutil import copyfile
 class MyFile(IStag):
     kobj=None
     def getName(self) -> str:
@@ -38,8 +40,8 @@ class MyFile(IStag):
     def on_after_buildfile(self,returncode,srcfile,magics)->bool:
         # self.kobj._log('on_after_buildfile  file\n',2)
         if len(self.kobj.addkey2dict(magics,'file'))>0:
-                self.kobj._log("srcfile:"+srcfile+"\n")
-                newsrcfilename = self.kobj._fileshander(magics['file'],srcfile,magics)
+                # self.kobj._log("srcfile:"+srcfile+"\n")
+                newsrcfilename = self._fileshander(self,magics['file'],srcfile,magics)
                 self.kobj._log("file "+ newsrcfilename +" created successfully\n")
         return False
     def on_before_compile(self,code,magics)->Tuple[bool,str]:
@@ -59,3 +61,25 @@ class MyFile(IStag):
         else:
             magics[str(key)] +=['newfile']
         return ''
+    def _fileshander(self,files:List,srcfilename,magics)->str:
+        index=-1
+        fristfile=srcfilename
+        try:
+            for newsrcfilename in files:
+                index=index+1
+                newsrcfilename = os.path.join(os.path.abspath(''),newsrcfilename)
+                if os.path.exists(newsrcfilename):
+                    if magics!=None and len(self.kobj.addkey2dict(magics,'overwritefile'))<1:
+                        newsrcfilename +=(".new"+self.kobj.language_info['file_extension'])
+                if not os.path.exists(os.path.dirname(newsrcfilename)) :
+                    os.makedirs(os.path.dirname(newsrcfilename))
+                if index==0:
+                    os.rename(srcfilename,newsrcfilename)
+                    fristfile=newsrcfilename
+                    files[0]=newsrcfilename
+                else:
+                    self.kobj._log("copy to :"+newsrcfilename+"\n")
+                    copyfile(fristfile,newsrcfilename)
+        except Exception as e:
+                self.kobj._log(str(e),2)
+        return files[0]

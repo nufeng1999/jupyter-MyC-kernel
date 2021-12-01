@@ -1,5 +1,6 @@
 from typing import Dict, Tuple, Sequence,List
 from plugins.ISpecialID import IStag,IDtag,IBtag,ITag
+from plugins._filter2_magics import Magics
 import os
 class MyInclude(IStag):
     kobj=None
@@ -53,13 +54,21 @@ class MyInclude(IStag):
             line=self.readcodefile(self,magics['include'],index1)
         return line
     def readcodefile(self,filename,spacecount=0):
+        filecontent=''
         filecode=''
         codelist1=None
         if not os.path.exists(filename):
             return ''
+        # self.kobj._log(os.path.join(os.path.abspath(''),filename+"\n"))
         with open(os.path.join(os.path.abspath(''),filename), 'r') as codef1:
             codelist1 = codef1.readlines()
+        #扫描源码
+        # filecode=codelist1
         if len(codelist1)>0:
             for t in codelist1:
-                filecode+=' '*spacecount + t
-        return filecode
+                filecontent+=' '*spacecount + t
+        try:
+            newmagics,filecontent=self.kobj.mag.filter(filecontent)
+        except Exception as e:
+            self.kobj._log(str(e),3)
+        return filecontent
