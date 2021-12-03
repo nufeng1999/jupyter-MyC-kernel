@@ -820,7 +820,7 @@ class CKernel(Kernel):
             #FIXME:
             if magics['runmode']=='repl':
                 self._start_replprg(binary_filename,magics['args'],magics)
-                return_code=p.returncode
+                return_code=self.replwrapper.child.status
                 bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,3,2)
                 # if bcancel_exec:return {'status': 'ok', 'execution_count': self.execution_count, 'payload': [], 'user_expressions': {}}
                 return  {'status': 'ok', 'execution_count': self.execution_count,

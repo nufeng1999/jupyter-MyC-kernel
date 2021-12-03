@@ -50,8 +50,6 @@ class Magics():
             magics.update(d)
         return magics[key]
     def filter(self, code):
-        #魔法字典
-        # magics={}
         actualCode = ''
         newactualCode = ''
         magics = {'cflags': [],
@@ -73,11 +71,8 @@ class Magics():
                   'pidcmd': [],
                   'args': [],
                   'rungdb': []}
-        #扫描源码
         for line in code.splitlines():
-            #扫描源码每行行
             orgline=line
-            # line=self.forcejj2code(line)
             if line==None or line.strip()=='': continue
             if line.strip().startswith('package'):
                 qline=self.kobj.replacemany(line,'; ', ';')
@@ -89,14 +84,14 @@ class Magics():
                 actualCode += line + '\n'
                 continue
             if line.strip().startswith('public'):
-                qline=self.kobj.replacemany(line,'s  ', 's ')
-                li=qline.strip().split()
-                if(len(li)>2 and li[1].strip()=='class'):
+                qline = self.kobj.replacemany(line, 's  ', 's ')
+                li = qline.strip().split()
+                if(len(li) > 2 and li[1].strip() == 'class'):
                     magics[li[0].strip()] = li[1].strip()
-                    pubclass= li[2].strip()
+                    pubclass = li[2].strip()
                     if pubclass.strip().endswith('{'):
-                        pubclass= pubclass[:len(pubclass)-1]
-                    magics['pubclass']= pubclass
+                        pubclass = pubclass[:len(pubclass)-1]
+                    magics['pubclass'] = pubclass
                 actualCode += line + '\n'
                 continue
             if self._is_specialID(line):
@@ -111,7 +106,6 @@ class Magics():
                     magics['replprompt'] += ['replprompt']
                     continue
                 else:
-                    #preprocessor
                     #_filter2_magics_i1
                     for pkey,pvalue in self.IBplugins.items():
                         # print( pkey +":"+str(len(pvalue))+"\n")
@@ -126,9 +120,6 @@ class Magics():
                             finally:pass
                             # if newline!=None and newline!='':
                             #     actualCode += newline + '\n'
-                    #获得BOOL关键字
-                    #登记Bool型参数和值
-                #获得参数型 关键字和其参数
                 findObj= re.search( r':(.*)',line)
                 if not findObj or len(findObj.group(0))<2:
                     continue
@@ -153,18 +144,14 @@ class Magics():
                         if findObj and len(findObj)>1:
                             pid=findObj[0]
                             cmd=findObj[1]
-                            self.send_cmd(pid=pid,cmd=cmd)
+                            self.kobj.send_cmd(pid=pid,cmd=cmd)
                 elif key == "outputtype":
                     magics[key]=value
                 elif key == "args":
-                    # Split arguments respecting quotes
                     for argument in re.findall(r'(?:[^\s,"]|"(?:\\.|[^"])*")+', value):
                         magics['args'] += [argument.strip('"')]
                 else:
                     pass
-                    #登记参数和值
-                    #处理参数和值 ？？？
-                    #合并处理结果
                     #_filter2_magics_i2
                     for pkey,pvalue in self.ISplugins.items():
                         # print( pkey +":"+str(len(pvalue))+"\n")
@@ -182,13 +169,8 @@ class Magics():
                     # always add empty line, so line numbers don't change
                     # actualCode += '\n'
             else:
-                # keep lines which did not contain magics
                 actualCode += line + '\n'
         newactualCode=actualCode
-        #第二次扫描源代码
-            #扫描源码每行行
-            #清理测试代码 test_begin test_end
-            #清理单行注释 // #
         #_filter2_magics_pend
         if len(self.addkey2dict(magics,'file'))>0 :
             newactualCode=''
