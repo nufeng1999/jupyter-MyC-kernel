@@ -652,8 +652,8 @@ class CKernel(Kernel):
             p.write_contents()
             binary_file.name=os.path.join(os.path.abspath(''),outfile)
             if p.returncode != 0:  # Compilation failed
-                self._log(''.join(('Error: '+ str(s) for s in gcccmd))+"\n",3)
-                self._log("[C kernel] GCC exited with code {}, the executable will not be executed".format(p.returncode),3)
+                self._log(''.join((str(s) for s in gcccmd))+"\n",3)
+                self._log("GCC exited with code {}, the executable will not be executed".format(p.returncode),3)
                 # delete source files before exit
                 os.remove(source_filename)
                 os.remove(binary_file.name)

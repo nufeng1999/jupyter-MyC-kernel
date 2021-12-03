@@ -57,6 +57,11 @@ class Magics():
         magics = {'cflags': [],
                   'ldflags': [],
                   'dlrun': [],
+                  'coptions': [],
+                  'joptions': [],
+                  'package': '',
+                  'main': '',
+                  'pubclass': '',
                   'repllistpid': [],
                   'replcmdmode': [],
                   'replprompt': [],
@@ -74,6 +79,26 @@ class Magics():
             orgline=line
             # line=self.forcejj2code(line)
             if line==None or line.strip()=='': continue
+            if line.strip().startswith('package'):
+                qline=self.kobj.replacemany(line,'; ', ';')
+                qline=self.kobj.replacemany(qline,' ;', ';')
+                qline= qline[:len(qline)-1]
+                li=qline.strip().split()
+                if(len(li)>1):
+                    magics[li[0].strip()] = li[1].strip()
+                actualCode += line + '\n'
+                continue
+            if line.strip().startswith('public'):
+                qline=self.kobj.replacemany(line,'s  ', 's ')
+                li=qline.strip().split()
+                if(len(li)>2 and li[1].strip()=='class'):
+                    magics[li[0].strip()] = li[1].strip()
+                    pubclass= li[2].strip()
+                    if pubclass.strip().endswith('{'):
+                        pubclass= pubclass[:len(pubclass)-1]
+                    magics['pubclass']= pubclass
+                actualCode += line + '\n'
+                continue
             if self._is_specialID(line):
                 if line.strip()[3:] == "repllistpid":
                     magics['repllistpid'] += ['true']
@@ -107,9 +132,9 @@ class Magics():
                 findObj= re.search( r':(.*)',line)
                 if not findObj or len(findObj.group(0))<2:
                     continue
-                key, value = line.strip()[3:].split(":", 2)
+                key, value = line.strip()[3:].split(":", 1)
                 key = key.strip().lower()
-                if key in ['ldflags', 'cflags']:
+                if key in ['ldflags', 'cflags','coptions','joptions']:
                     for flag in value.split():
                         magics[key] += [flag]
                 elif key == "runmode":
