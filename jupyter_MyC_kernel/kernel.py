@@ -11,7 +11,6 @@ from jinja2 import Environment, PackageLoader, select_autoescape,Template
 from abc import ABCMeta, abstractmethod
 from typing import List, Dict, Tuple, Sequence
 from shutil import copyfile
-from plugins.ISpecialID import IStag,IDtag,IBtag,ITag
 import pexpect
 import signal
 import typing 
@@ -29,7 +28,11 @@ import time
 import importlib
 import importlib.util
 import inspect
+from plugins.ISpecialID import IStag,IDtag,IBtag,ITag
 from plugins._filter2_magics import Magics
+#
+#   MyPython Jupyter Kernel
+#
 class IREPLWrapper(replwrap.REPLWrapper):
     def __init__(self, write_to_stdout, write_to_stderr, read_from_stdin,
                 cmd_or_spawn,replsetip, orig_prompt, prompt_change,
@@ -152,37 +155,30 @@ class RealTimeSubprocess(subprocess.Popen):
                 self.stdin.write(readLine.encode())
             else:
                 self._write_to_stdout(contents,magics)
-class CKernel(Kernel):
-    implementation = 'jupyter-MyC-kernel'
+class MyKernel(Kernel):
+    implementation = 'jupyter-MyPython-kernel'
     implementation_version = '1.0'
-    language = 'C'
-    language_version = 'C11'
-    language_info = {'name': 'text/x-csrc',
-                     'mimetype': 'text/x-csrc',
-                     'file_extension': '.c'}
-    banner = "C kernel.\n" \
+    language = 'Python'
+    language_version = sys.version.split()[0]
+    language_info = {'name': 'python',
+                     'version': sys.version.split()[0],
+                     'mimetype': 'text/x-python',
+                     'codemirror_mode': {
+                        'name': 'ipython',
+                        'version': sys.version_info[0]
+                     },
+                     'pygments_lexer': 'ipython%d' % 3,
+                     'nbconvert_exporter': 'python',
+                     'file_extension': '.py'}
+    banner = "MyPython kernel.\n" \
              "Uses gcc, compiles in C11, and creates source code files and executables in temporary folder.\n"
-    main_head = "#include <stdio.h>\n" \
-            "#include <math.h>\n" \
-            "int main(int argc, char* argv[], char** env){\n"
+    kernelinfo="[MyPython]"
+    main_head = "\n" \
+            "\n" \
+            "int main(List<String> arguments){\n"
     main_foot = "\nreturn 0;\n}"
-    plugins={"0":[],
-         "1":[],
-         "2":[],
-         "3":[],
-         "4":[],
-         "5":[],
-         "6":[],
-         "7":[],
-         "8":[],
-         "9":[]}
-    silent=None
-    jinja2_env = Environment()
-    g_rtsps={}
-    g_chkreplexit=True
     def __init__(self, *args, **kwargs):
-        super(CKernel, self).__init__(*args, **kwargs)
-        self.kernelinfo='[MyC Kernel]'
+        super(MyKernel, self).__init__(*args, **kwargs)
         self._allow_stdin = True
         self.readOnlyFileSystem = False
         self.bufferedOutput = True
@@ -190,17 +186,39 @@ class CKernel(Kernel):
         self.wAll = True # show all warnings by default
         self.wError = False # but keep comipiling for warnings
         self.files = []
-        mastertemp = tempfile.mkstemp(suffix='.out')
-        os.close(mastertemp[0])
-        self.master_path = mastertemp[1]
-        self.resDir = path.join(path.dirname(path.realpath(__file__)), 'resources')
-        filepath = path.join(self.resDir, 'master.c')
-        subprocess.call(['gcc', filepath, '-std=c11', '-rdynamic', '-ldl', '-o', self.master_path])
+        # mastertemp = tempfile.mkstemp(suffix='.out')
+        # os.close(mastertemp[0])
+        # self.master_path = mastertemp[1]
+        # self.resDir = path.join(path.dirname(path.realpath(__file__)), 'resources')
         self.chk_replexit_thread = Thread(target=self.chk_replexit, args=(self.g_rtsps))
         self.chk_replexit_thread.daemon = True
         self.chk_replexit_thread.start()
         self.init_plugin()
         self.mag=Magics(self,self.plugins)
+    silent=None
+    jinja2_env = Environment()
+    g_rtsps={}
+    g_chkreplexit=True
+    def get_retinfo(self, rettype:int=0):
+        retinfo={'status': 'ok', 'execution_count': self.execution_count, 'payload': [], 'user_expressions': {}}
+        return retinfo
+    def chkjoptions(self,magics,jarfile,targetdir):
+        if len(self.addkey2dict(magics,'joptions'))>-1:
+            index=-1
+            try:
+                index=magics['joptions'].index('-cp')
+            except Exception as e:
+                pass
+            if(index<0):
+                magics['joptions']+=['-cp']
+                magics['joptions']+=[':']
+                index=index+1
+            cpstr=magics['joptions'][index+1]
+            cpstr=cpstr+":"+jarfile+":"+targetdir
+            if cpstr.strip().startswith(':'):
+                cpstr=cpstr[1:] 
+            self._log(cpstr)
+            magics['joptions'][index+1]=cpstr
     isjj2code=False
     def _is_jj2_begin(self,line):
         if line==None or line=='':return ''
@@ -224,7 +242,11 @@ class CKernel(Kernel):
         if code==None or code.strip()=='': return code
         env = Environment()
         template = Template(code)
+        # self.process_output('render\n')
+        # for key in self.jj2code_args:
+            # self.process_output(key+':'+self.jj2code_args[key])
         ret=template.render(self.jj2code_args)
+        # self.process_output('ret'+'\n')
         return ret
     def forcejj2code(self,line): 
         if not self.isjj2code:
@@ -233,10 +255,15 @@ class CKernel(Kernel):
                 self.isjj2code=True
                 if len(line.strip())>15:
                     argline =line.split(":",1)
+                    # self.process_output(line+'\n')
                     if len(argline)>1:
                         argstr=argline[1]
-                        tplargs=self._filter_dict(argstr)
+                        # self.process_output(argstr+' is argstr\n')
+                        tplargs=self.resolving_eqval2_dict(argstr)
                         self.jj2code_args.update(tplargs)
+                        # self.process_output('jj2code_args.update\n')
+                        # for key in self.jj2code_args:
+                            # self.process_output(key+':'+self.jj2code_args[key])
                     iste=self._is_jj2_end(line)
                     if iste:
                         self.cleanjj2code_cache()
@@ -285,9 +312,15 @@ class CKernel(Kernel):
     def _is_sqm_end(self,line):
         if line==None or line=='':return ''
         return line.rstrip().endswith('\'\'\'')
+    def cleanCdqm(self,code):
+        return re.sub(r"/\*.*?\*/", "", code, flags=re.M|re.S)
+    def cleanCnotes(self,code):
+        return re.sub(r"//.*", "", code)
     def cleannotes(self,line):
         return '' if (not self._is_specialID(line)) and (line.lstrip().startswith('##') or line.lstrip().startswith('//')) else line
-    isdqm=False
+    isdqm=False##清除双引号多行注释
+    def cleandqmA(self,code):
+        return re.sub(r"\"\"\".*?\"\"\"", "", code, flags=re.M|re.S)
     def cleandqm(self,line):
         if not self.isdqm:
             istb=self._is_dqm_begin(line)
@@ -304,6 +337,8 @@ class CKernel(Kernel):
         line= "" if self.isdqm else line
         return line
     issqm=False
+    def cleansqmA(self,code):
+        return re.sub(r"\'\'\'.*?\'\'\'", "", code, flags=re.M|re.S)
     def cleansqm(self,line):
         if not self.issqm:
             istb=self._is_sqm_begin(line)
@@ -320,6 +355,9 @@ class CKernel(Kernel):
         line= "" if self.issqm else line
         return line
     istestcode=False
+    def cleantestcodeA(self,code):
+        code=re.sub(r"\/\/test_begin.*?\/\/test_end", "", code, flags=re.M|re.S)
+        return re.sub(r"\#\#test_begin.*?\#\#test_end", "", code, flags=re.M|re.S)
     def cleantestcode(self,line):
         if not self.istestcode:
             istb=self._is_test_begin(line)
@@ -410,9 +448,12 @@ class CKernel(Kernel):
                     grtsps[key].child.terminate(force=True)
                     del grtsps[key]
     def cleanup_files(self):
-        for file in self.files:
-            if(os.path.exists(file)):
-                os.remove(file)
+        # keep the list of files create in case there is an exception
+        # before they can be deleted as usual
+        if self.files != None and len(self.files) > 0:
+            for file in self.files:
+                if(os.path.exists(file)):
+                    os.remove(file)
     def new_temp_file(self, **kwargs):
         kwargs['delete'] = False
         kwargs['mode'] = 'w'
@@ -435,8 +476,11 @@ class CKernel(Kernel):
             if len(outputtype)>0 and (level!=2 or level!=3):
                 self._write_display_data(mimetype=outputtype,contents=prestr+output)
                 return
+            # Send standard output
             stream_content = {'name': streamname, 'text': prestr+output}
             self.send_response(self.iopub_socket, 'stream', stream_content)
+    def _logln(self, output,level=1,outputtype='text/plain'):
+        self._log(output+"\n",level=1,outputtype='text/plain')
     def _write_display_data(self,mimetype='text/html',contents=""):
         self.send_response(self.iopub_socket, 'display_data', {'data': {mimetype:contents}, 'metadata': {mimetype:{}}})
     def _write_to_stdout(self,contents,magics=None):
@@ -582,6 +626,46 @@ class CKernel(Kernel):
             return
         except Exception as e:
             self._write_to_stderr("[MyPythonkernel] Error:Executable command error! "+str(e)+"\n")
+    def do_Py_command(self,commands=None,cwd=None,magics=None):
+        p = self.create_jupyter_subprocess(['MyPythonKernel']+commands,cwd=os.path.abspath(''),shell=False)
+        self.g_rtsps[str(p.pid)]=p
+        if magics!=None and len(magics['showpid'])>0:
+            self._write_to_stdout("The process PID:"+str(p.pid)+"\n")
+        while p.poll() is None:
+            p.write_contents()
+        # wait for threads to finish, so output is always shown
+        p._stdout_thread.join()
+        p._stderr_thread.join()
+        del self.g_rtsps[str(p.pid)]
+        p.write_contents()
+        if p.returncode != 0:
+            self._write_to_stderr("[MyPythonkernel] Executable exited with code {}".format(p.returncode))
+        else:
+            self._write_to_stdout("[MyPythonkernel] Info:MyPythonKernel command success.")
+        return
+    def do_flutter_command(self,commands=None,cwd=None,magics=None):
+        p = self.create_jupyter_subprocess(['flutter']+commands,cwd=os.path.abspath(''),shell=False)
+        self.g_rtsps[str(p.pid)]=p
+        if magics!=None and len(magics['showpid'])>0:
+            self._write_to_stdout("The process PID:"+str(p.pid)+"\n")
+        while p.poll() is None:
+            p.write_contents()
+        # wait for threads to finish, so output is always shown
+        p._stdout_thread.join()
+        p._stderr_thread.join()
+        del self.g_rtsps[str(p.pid)]
+        p.write_contents()
+        if p.returncode != 0:
+            self._write_to_stderr("[MyPythonkernel] Executable exited with code {}".format(p.returncode))
+        else:
+            self._write_to_stdout("[MyPythonkernel] Info:flutter command success.")
+        return
+    def send_cmd(self,pid,cmd):
+        try:
+            self.g_rtsps[pid]._write_to_stdout(cmd)
+        except Exception as e:
+            self._write_to_stderr("[MyPythonkernel] Error:Executable send_cmd error! "+str(e)+"\n")
+        return
     def create_jupyter_subprocess(self, cmd,cwd=None,shell=False,env=None):
         try:
             return RealTimeSubprocess(cmd,
@@ -591,6 +675,243 @@ class CKernel(Kernel):
         except Exception as e:
             self._write_to_stdout("RealTimeSubprocess err:"+str(e))
             raise
+    def generate_Pythonfile(self, source_filename, binary_filename, cflags=None, ldflags=None):
+        return
+    def _add_main(self, magics, code):
+        # remove comments
+        tmpCode = re.sub(r"//.*", "", code)
+        tmpCode = re.sub(r"/\*.*?\*/", "", tmpCode, flags=re.M|re.S)
+        x = re.search(r".*\s+main\s*\(", tmpCode)
+        if not x:
+            code = self.main_head + code + self.main_foot
+            # magics['cflags'] += ['-lm']
+        return magics, code
+    def raise_plugin(self,code,magics,returncode=None,filename='',ifunc=1,ieven=1)->Tuple[bool,str]:
+        bcancel_exec=False
+        bretcancel_exec=False
+        retstr=''
+        for pluginlist in self.plugins:
+            for pkey,pvalue in pluginlist.items():
+                # print( pkey +":"+str(len(pvalue))+"\n")
+                for pobj in pvalue:
+                    newline=''
+                    try:
+                        # if key in pobj.getIDSptag(pobj):
+                        if ifunc==1 and ieven==1:
+                                bretcancel_exec,retstr=pobj.on_before_buildfile(pobj,code,magics)
+                        elif ifunc==2 and ieven==1:
+                                bretcancel_exec,retstr=pobj.on_before_compile(pobj,code,magics)
+                        elif ifunc==3 and ieven==1:
+                                bretcancel_exec,retstr=pobj.on_before_exec(pobj,code,magics)
+                        elif ifunc==1 and ieven==2:
+                                bretcancel_exec=pobj.on_after_buildfile(pobj,returncode,filename,magics)
+                        elif ifunc==2 and ieven==2:
+                                bretcancel_exec=pobj.on_after_compile(pobj,returncode,filename,magics)
+                        elif ifunc==3 and ieven==2:
+                                bretcancel_exec=pobj.on_after_exec(pobj,returncode,filename,magics)
+                        elif ifunc==3 and ieven==3:
+                                bretcancel_exec=pobj.on_after_completion(pobj,returncode,filename,magics)        
+                        bcancel_exec=bretcancel_exec & bcancel_exec
+                        if bcancel_exec:
+                            return bcancel_exec,""
+                    except Exception as e:
+                        self._log(pobj.getName(pobj)+"---"+str(e)+"\n")
+                    finally:pass
+        return bcancel_exec,retstr
+    def do_execute_script(self, code, magics,silent, store_history=True,
+                   user_expressions=None, allow_stdin=True):
+        try:
+            bcancel_exec,retinfo,magics, code=self.do_preexecute(code,magics, silent, store_history=store_history,
+                user_expressions=user_expressions, allow_stdin=allow_stdin)
+            if bcancel_exec:return retinfo
+            return_code=0
+            fil_ename=''
+            bcancel_exec,retinfo,magics, code,fil_ename,retstr=self.do_create_codefile(magics,code, silent, store_history=store_history,
+                user_expressions=user_expressions, allow_stdin=allow_stdin)
+            if bcancel_exec:return retinfo
+            bcancel_exec,retinfo,magics, code,fil_ename,retstr=self.do_runcode(return_code,fil_ename,magics,code, silent, store_history=store_history,
+                user_expressions=user_expressions, allow_stdin=allow_stdin)
+            if bcancel_exec:return retinfo
+        except Exception as e:
+            self._log(""+str(e),3)
+        return self.get_retinfo()
+    def do_execute_class(self, code, magics,silent, store_history=True,
+                   user_expressions=None, allow_stdin=True):
+        try:
+            return_code=0
+            fil_ename=''
+            outpath=''
+            bcancel_exec,retinfo,magics, code=self.do_preexecute(code, magics,silent, store_history=store_history,
+                user_expressions=user_expressions, allow_stdin=allow_stdin)
+            if bcancel_exec:return retinfo
+            return_code=0
+            fil_ename=''
+            bcancel_exec,retinfo,magics, code,fil_ename,class_filename,outpath,retstr=self.do_create_codefile(magics,code, silent, store_history=store_history,
+                user_expressions=user_expressions, allow_stdin=allow_stdin)
+            if bcancel_exec:return retinfo
+            bcancel_exec,retinfo,magics, code,fil_ename,retstr=self.do_runcode(return_code,fil_ename,class_filename,outpath,magics,code, silent, store_history=store_history,
+                user_expressions=user_expressions, allow_stdin=allow_stdin)
+            if bcancel_exec:return retinfo
+        except Exception as e:
+            self._log(""+str(e),3)
+        return self.get_retinfo()
+    def do_execute(self, code, silent, store_history=True,
+                   user_expressions=None, allow_stdin=True):
+        self.silent = silent
+        magics, code = self.mag.filter(code)
+        if(self.runfiletype=='script'):
+            self.do_execute_script(code, magics,silent, store_history,
+                   user_expressions, allow_stdin)
+        elif(self.runfiletype=='class'):
+            self.do_execute_class(code, magics,silent, store_history,
+                   user_expressions, allow_stdin=True)
+        elif(self.runfiletype=='exe'):
+            self.do_execute_script(code, magics,silent, store_history,
+                   user_expressions, allow_stdin)
+        self.cleanup_files()
+        return 
+    def do_shutdown(self, restart):
+        self.g_chkreplexit=False
+        self.chk_replexit_thread.join()
+        self.cleanup_files()
+    ISplugins={"0":[],
+         "1":[],
+         "2":[],
+         "3":[],
+         "4":[],
+         "5":[],
+         "6":[],
+         "7":[],
+         "8":[],
+         "9":[]}
+    IDplugins={"0":[],
+         "1":[],
+         "2":[],
+         "3":[],
+         "4":[],
+         "5":[],
+         "6":[],
+         "7":[],
+         "8":[],
+         "9":[]}
+    IBplugins={"0":[],
+         "1":[],
+         "2":[],
+         "3":[],
+         "4":[],
+         "5":[],
+         "6":[],
+         "7":[],
+         "8":[],
+         "9":[]}
+    plugins=[ISplugins,IDplugins,IBplugins]
+    # mag=Magics(plugins)
+    def pluginRegister(self,obj):
+        if obj==None:return
+        try:
+            obj.setKernelobj(obj,self)
+            priority=obj.getPriority(obj)
+            if not inspect.isabstract(obj) and issubclass(obj,IStag):
+                self.ISplugins[str(priority)]+=[obj]
+            elif not inspect.isabstract(obj) and issubclass(obj,IDtag):
+                self.IDplugins[str(priority)]+=[obj]
+            elif not inspect.isabstract(obj) and issubclass(obj,IBtag):
+                self.IBplugins[str(priority)]+=[obj]
+        except Exception as e:
+            pass
+        pass
+    def pluginISList(self):
+        self._log("---------pluginISList--------\n")
+        for key,value in self.ISplugins.items():
+            # print( key +":"+str(len(value))+"\n")
+            for obj in value:
+                self._log(obj.getName(obj)+"\n")
+    def pluginIDList(self):
+        self._log("---------pluginIDList--------\n")
+        for key,value in self.IDplugins.items():
+            # print( key +":"+str(len(value))+"\n")
+            for obj in value:
+                self._log(obj.getName(obj)+"\n")
+    def pluginIBList(self):
+        self._log("---------pluginIBList--------\n")
+        for key,value in self.IBplugins.items():
+            # print( key +":"+str(len(value))+"\n")
+            for obj in value:
+                self._log(obj.getName(obj)+"\n")
+    def onkernelshutdown(self,restart):
+        for key,value in self.IDplugins.items():
+            # print( key +":"+str(len(value))+"\n")
+            for obj in value:
+                try:
+                    newline=obj.on_shutdown(obj,restart)
+                    if newline=='':break
+                except Exception as e:
+                    pass
+                finally:pass
+    def callIDplugin(self,line):
+        newline=line
+        for key,value in self.IDplugins.items():
+            # print( key +":"+str(len(value))+"\n")
+            for obj in value:
+                try:
+                    newline=obj.on_IDpReorgCode(obj,newline)
+                    if newline=='':break
+                except Exception as e:
+                    pass
+                finally:pass
+        return newline
+    def init_plugin(self):
+        mypath = os.path.dirname(os.path.abspath(__file__))
+        idir=os.path.join(mypath,'../plugins')
+        sys.path.append(mypath)
+        sys.path.append(idir)
+        for f in os.listdir(idir):
+            if os.path.isfile(os.path.join(idir,f)):
+                try:
+                    name=os.path.splitext(f)[0]
+                    if name!='pluginmng' and name!='kernel' and(spec := importlib.util.find_spec(name)) is not None:
+                        module = importlib.import_module(name)
+                        for name1, obj in inspect.getmembers(module,
+                            lambda obj: 
+                                callable(obj) 
+                                and inspect.isclass(obj) 
+                                and not inspect.isabstract(obj) 
+                                and issubclass(obj,ITag)
+                                ):
+                            # self._write_to_stdout("\n"+obj.__name__+"\n")
+                            self.pluginRegister(obj)
+                    else:
+                        pass
+                except Exception as e:
+                    pass
+                finally:
+                    pass
+class CKernel(MyKernel):
+    implementation = 'jupyter-MyC-kernel'
+    implementation_version = '1.0'
+    language = 'C'
+    language_version = 'C11'
+    language_info = {'name': 'text/x-csrc',
+                     'mimetype': 'text/x-csrc',
+                     'file_extension': '.c'}
+    runfiletype='exe'
+    banner = "C kernel.\n" \
+             "Uses gcc, compiles in C11, and creates source code files and executables in temporary folder.\n"
+    main_head = "#include <stdio.h>\n" \
+            "#include <math.h>\n" \
+            "int main(int argc, char* argv[], char** env){\n"
+    main_foot = "\nreturn 0;\n}"
+    def __init__(self, *args, **kwargs):
+        super(CKernel, self).__init__(*args, **kwargs)
+        # MyKernel.__init__(self, cmd_or_spawn, orig_prompt,
+        #                               prompt_change,extra_init_cmd=extra_init_cmd)
+        self.kernelinfo='[MyC Kernel]'
+        self._allow_stdin = True
+        self.readOnlyFileSystem = False
+        self.bufferedOutput = True
+        self.linkMaths = True # always link math library
+        self.wAll = True # show all warnings by default
+        self.wError = False # but keep comipiling for warnings
     def compile_with_gcc(self, source_filename, binary_filename, cflags=None, ldflags=None,env=None):
         # cflags = ['-std=c89', '-pedantic', '-fPIC', '-shared', '-rdynamic'] + cflags
         # cflags = ['-std=c99', '-Wdeclaration-after-statement', '-Wvla', '-fPIC', '-shared', '-rdynamic'] + cflags
@@ -618,26 +939,8 @@ class CKernel(Kernel):
                             outfile=binary_filename
                 binary_filename=outfile
         args = ['gcc', source_filename] + ['-o', binary_filename]+ cflags  + ldflags
-        self._write_to_stdout(''.join((' '+ str(s) for s in args))+"\n")
+        self._log(''.join((' '+ str(s) for s in args))+"\n")
         return self.create_jupyter_subprocess(args,env=env),binary_filename,args
-    def _filter_env(self, envstr):
-        if envstr is None or len(envstr.strip())<1:
-            return os.environ
-        argsstr=self.replacemany(self.replacemany(self.replacemany(envstr.strip(),('  '),' '),('= '),'='),' =','=')
-        pattern = re.compile(r'([^\s*]*)="(.*?)"|([^\s*]*)=(\'.*?\')|([^\s*]*)=(.[^\s]*)')
-        for argument in pattern.findall(argsstr):
-            li=list(argument)
-            li= [i for i in li if i != '']
-            os.environ.setdefault(str(li[0]),li[1])
-        return os.environ
-    def _add_main(self, magics, code):
-        tmpCode = re.sub(r"//.*", "", code)
-        tmpCode = re.sub(r"/\*.*?\*/", "", tmpCode, flags=re.M|re.S)
-        x = re.search(r".*\s+main\s*\(", tmpCode)
-        if not x:
-            code = self.main_head + code + self.main_foot
-            magics['cflags'] += ['-lm']
-        return magics, code
     def _exec_gcc_(self,source_filename,magics):
         self._write_to_stdout('Generating executable file\n')
         with self.new_temp_file(suffix='.out') as binary_file:
@@ -726,372 +1029,131 @@ class CKernel(Kernel):
         self._start_gdb()
         return self.do_replexecutegdb( code.replace('//%rungdb', ''), silent, store_history,
                    user_expressions, False)
-    def raise_plugin(self,code,magics,returncode=None,filename='',ifunc=1,ieven=1)->Tuple[bool,str]:
+    def do_runcode(self,return_code,fil_ename,magics,code, silent, store_history=True,
+                    user_expressions=None, allow_stdin=True):
+        return_code=return_code
+        fil_ename=fil_ename
         bcancel_exec=False
-        bretcancel_exec=False
+        retinfo=self.get_retinfo()
         retstr=''
-        for pluginlist in self.plugins:
-            for pkey,pvalue in pluginlist.items():
-                # print( pkey +":"+str(len(pvalue))+"\n")
-                for pobj in pvalue:
-                    newline=''
-                    try:
-                        # if key in pobj.getIDSptag(pobj):
-                        if ifunc==1 and ieven==1:
-                                bretcancel_exec,retstr=pobj.on_before_buildfile(pobj,code,magics)
-                        elif ifunc==2 and ieven==1:
-                                bretcancel_exec,retstr=pobj.on_before_compile(pobj,code,magics)
-                        elif ifunc==3 and ieven==1:
-                                bretcancel_exec,retstr=pobj.on_before_exec(pobj,code,magics)
-                        elif ifunc==1 and ieven==2:
-                                bretcancel_exec=pobj.on_after_buildfile(pobj,returncode,filename,magics)
-                        elif ifunc==2 and ieven==2:
-                                bretcancel_exec=pobj.on_after_compile(pobj,returncode,filename,magics)
-                        elif ifunc==3 and ieven==2:
-                                bretcancel_exec=pobj.on_after_exec(pobj,returncode,filename,magics)
-                        elif ifunc==3 and ieven==3:
-                                bretcancel_exec=pobj.on_after_completion(pobj,returncode,filename,magics)        
-                        bcancel_exec=bretcancel_exec & bcancel_exec
-                        if bcancel_exec:
-                            return bcancel_exec,""
-                    except Exception as e:
-                        self._log(pobj.getName(pobj)+"---"+str(e)+"\n")
-                    finally:pass
-        return bcancel_exec,retstr
-    def do_execute(self, code, silent, store_history=True,
-                   user_expressions=None, allow_stdin=True):
-        try:
-            self.silent = silent
-            # magics, code = self._filter_magics(code)
-            magics, code = self.mag.filter(code)
-            if len(self.addkey2dict(magics,'replcmdmode'))>0:
-                return self.send_replcmd(code, silent, store_history=True,
-                    user_expressions=None, allow_stdin=False)
-            if len(magics['rungdb'])>0:
-                return self.replgdb_sendcmd(code,silent, store_history,
-                    user_expressions, allow_stdin)
-            if magics['runmode']=='repl':
-                if hasattr(self, 'replcmdwrapper'):
-                    if self.replcmdwrapper :
-                        return self.repl_sendcmd(code, silent, store_history,
-                            user_expressions, allow_stdin,magics)
-            #FIXME:
-            if len(self.addkey2dict(magics,'onlyruncmd'))>0:
-                return {'status': 'ok', 'execution_count': self.execution_count, 'payload': [],'user_expressions': {}}
-            if len(self.addkey2dict(magics,'onlycsfile'))<1 :
-                magics, code = self._add_main(magics, code)
-            return_code=0
-            fil_ename=''
-            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,1,1)
-            if bcancel_exec:return {'status': 'ok', 'execution_count': self.execution_count, 'payload': [], 'user_expressions': {}}
-            with self.new_temp_file(suffix='.c') as source_file:
-                source_file.write(code)
-                source_file.flush()
-                newsrcfilename=source_file.name 
-                fil_ename=newsrcfilename
-                return_code=True
-                # Generate new src file
-                bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,1,2)
-                if bcancel_exec:return {'status': 'ok', 'execution_count': self.execution_count, 'payload': [], 'user_expressions': {}}
-                # if len(self.addkey2dict(magics,'onlycsfile'))>0:
-                #     if len(self.addkey2dict(magics,'file'))<1:
-                #         self._log("no file name parameter\n",2)
-                #     return {'status': 'ok', 'execution_count': self.execution_count, 'payload': [], 'user_expressions': {}}
-                # Generate executable file :being
-                bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,2,1)
-                if bcancel_exec:
-                    return {'status': 'ok', 'execution_count': self.execution_count, 'payload': [], 'user_expressions': {}}
-                if len(self.addkey2dict(magics,'file'))>0:
-                    fil_ename=magics['file'][0]
-                else: fil_ename=source_file.name
-                returncode,binary_filename=self._exec_gcc_(fil_ename,magics)
-                fil_ename=binary_filename
-                return_code=returncode
-                bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,2,2)
-                if bcancel_exec:return {'status': 'ok', 'execution_count': self.execution_count, 'payload': [], 'user_expressions': {}}
-                if returncode!=0:return {'status': 'ok', 'execution_count': self.execution_count, 'payload': [],'user_expressions': {}}
-                # Generate executable file :end
-            if len(self.addkey2dict(magics,'onlyrungcc'))>0:
-                self._log("only run gcc \n")
-                return {'status': 'ok', 'execution_count': self.execution_count, 'payload': [],'user_expressions': {}}
-            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,3,1)
-            if bcancel_exec:return {'status': 'ok', 'execution_count': self.execution_count, 'payload': [], 'user_expressions': {}}
-            self._write_to_stdout("The process :"+binary_filename+"\n")
-            #FIXME:
-            if magics['runmode']=='repl':
-                self._start_replprg(binary_filename,magics['args'],magics)
-                return_code=self.replwrapper.child.status
-                bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,3,2)
-                # if bcancel_exec:return {'status': 'ok', 'execution_count': self.execution_count, 'payload': [], 'user_expressions': {}}
-                return  {'status': 'ok', 'execution_count': self.execution_count,
-                            'payload': [], 'user_expressions': {}}
-            #FIXME:
-            if len(magics['dlrun'])>0:
-                p = self.create_jupyter_subprocess([self.master_path, binary_filename] + magics['args'],env=self.addkey2dict(magics,'env'))
-            else:
-                p = self.create_jupyter_subprocess([binary_filename] + magics['args'],env=self.addkey2dict(magics,'env'))
-            self.subprocess=p
-            self.g_rtsps[str(p.pid)]=p
-            return_code=p.returncode
+        bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,3,1)
+        if bcancel_exec:return bcancel_exec,retinfo,magics, code,fil_ename,retstr
+        self._write_to_stdout("The process :"+fil_ename+"\n")
+        #FIXME:
+        if magics['runmode']=='repl':
+            self._start_replprg(fil_ename,magics['args'],magics)
+            return_code=self.replwrapper.child.status
             bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,3,2)
-            if bcancel_exec:return {'status': 'ok', 'execution_count': self.execution_count, 'payload': [], 'user_expressions': {}}
-            if len(self.addkey2dict(magics,'showpid'))>0:
-                self._write_to_stdout("The process PID:"+str(p.pid)+"\n")
-            while p.poll() is None:
-                p.write_contents(magics)
+            # if bcancel_exec:return {'status': 'ok', 'execution_count': self.execution_count, 'payload': [], 'user_expressions': {}}
+            return bcancel_exec,retinfo,magics, code,fil_ename,retstr
+        #FIXME:
+        if len(magics['dlrun'])>0:
+            p = self.create_jupyter_subprocess([self.master_path, fil_ename] + magics['args'],env=self.addkey2dict(magics,'env'))
+        else:
+            p = self.create_jupyter_subprocess([fil_ename] + magics['args'],env=self.addkey2dict(magics,'env'))
+        self.subprocess=p
+        self.g_rtsps[str(p.pid)]=p
+        return_code=p.returncode
+        bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,3,2)
+        if bcancel_exec:return bcancel_exec,retinfo,magics, code,fil_ename,retstr
+        if len(self.addkey2dict(magics,'showpid'))>0:
+            self._write_to_stdout("The process PID:"+str(p.pid)+"\n")
+        while p.poll() is None:
             p.write_contents(magics)
-            # wait for threads to finish, so output is always shown
-            p._stdout_thread.join()
-            p._stderr_thread.join()
-            p.write_contents(magics)
-            return_code=p.returncode
-            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,3,3)
-            if bcancel_exec:return {'status': 'ok', 'execution_count': self.execution_count, 'payload': [], 'user_expressions': {}}
-            # now remove the files we have just created
-            if(os.path.exists(source_file.name)):
-                os.remove(source_file.name)
-            # if(os.path.exists(binary_filename)):
-                # os.remove(binary_filename)
-            # if p.returncode != 0:
-                # self._write_to_stderr("[C kernel] Executable exited with code {}".format(p.returncode))
-        except Exception as e:
-            self._log(""+str(e),3)
-        return {'status': 'ok', 'execution_count': self.execution_count, 'payload': [], 'user_expressions': {}}
-    def do_shutdown(self, restart):
-        self.g_chkreplexit=False
-        self.chk_replexit_thread.join()
-        self.cleanup_files()
-    ISplugins={"0":[],
-         "1":[],
-         "2":[],
-         "3":[],
-         "4":[],
-         "5":[],
-         "6":[],
-         "7":[],
-         "8":[],
-         "9":[]}
-    IDplugins={"0":[],
-         "1":[],
-         "2":[],
-         "3":[],
-         "4":[],
-         "5":[],
-         "6":[],
-         "7":[],
-         "8":[],
-         "9":[]}
-    IBplugins={"0":[],
-         "1":[],
-         "2":[],
-         "3":[],
-         "4":[],
-         "5":[],
-         "6":[],
-         "7":[],
-         "8":[],
-         "9":[]}
-    plugins=[ISplugins,IDplugins,IBplugins]
-    def pluginRegister(self,obj):
-        if obj==None:return
-        try:
-            obj.setKernelobj(obj,self)
-            priority=obj.getPriority(obj)
-            if not inspect.isabstract(obj) and issubclass(obj,IStag):
-                self.ISplugins[str(priority)]+=[obj]
-            elif not inspect.isabstract(obj) and issubclass(obj,IDtag):
-                self.IDplugins[str(priority)]+=[obj]
-            elif not inspect.isabstract(obj) and issubclass(obj,IBtag):
-                self.IBplugins[str(priority)]+=[obj]
-        except Exception as e:
-            pass
-        pass
-    def pluginISList(self):
-        self._log("---------pluginISList--------\n")
-        for key,value in self.ISplugins.items():
-            # print( key +":"+str(len(value))+"\n")
-            for obj in value:
-                self._log(obj.getName(obj)+"\n")
-    def pluginIDList(self):
-        self._log("---------pluginIDList--------\n")
-        for key,value in self.IDplugins.items():
-            # print( key +":"+str(len(value))+"\n")
-            for obj in value:
-                self._log(obj.getName(obj)+"\n")
-    def pluginIBList(self):
-        self._log("---------pluginIBList--------\n")
-        for key,value in self.IBplugins.items():
-            # print( key +":"+str(len(value))+"\n")
-            for obj in value:
-                self._log(obj.getName(obj)+"\n")
-    def onkernelshutdown(self,restart):
-        for key,value in self.IDplugins.items():
-            # print( key +":"+str(len(value))+"\n")
-            for obj in value:
-                try:
-                    newline=obj.on_shutdown(obj,restart)
-                    if newline=='':break
-                except Exception as e:
-                    pass
-                finally:pass
-    def callISp_before_compile(self,code):
-        dywtoend=False ##是否要结束整个代码执行过程
-        newcode=code
-        for key,value in self.ISplugins.items():
-            # print( key +":"+str(len(value))+"\n")
-            for obj in value:
-                try:
-                    newline=obj.on_before_compile(obj,code)
-                    if newline=='':break
-                except Exception as e:
-                    pass
-                finally:pass
-        return dywtoend,newcode
-    def callISp_after_compile(self,returncode,binfile):
-        dywtoend=False ##是否要结束整个代码执行过程
-        for key,value in self.ISplugins.items():
-            # print( key +":"+str(len(value))+"\n")
-            for obj in value:
-                try:
-                    newline=obj.on_after_compile(obj,returncode,binfile)
-                    if newline=='':break
-                except Exception as e:
-                    pass
-                finally:pass
-        return dywtoend
-    def callIBp_before_compile(self,code):
-        dywtoend=False ##是否要结束整个代码执行过程
-        newcode=code
-        for key,value in self.IBplugins.items():
-            # print( key +":"+str(len(value))+"\n")
-            for obj in value:
-                try:
-                    newline=obj.on_before_compile(obj,code)
-                    if newline=='':break
-                except Exception as e:
-                    pass
-                finally:pass
-        return dywtoend,newcode
-    def callIBp_after_compile(self,returncode,binfile):
-        dywtoend=False ##是否要结束整个代码执行过程
-        for key,value in self.IBplugins.items():
-            # print( key +":"+str(len(value))+"\n")
-            for obj in value:
-                try:
-                    newline=obj.on_after_compile(obj,returncode,binfile)
-                    if newline=='':break
-                except Exception as e:
-                    pass
-                finally:pass
-        return dywtoend
-    def callISp_before_exec(self,code)->Tuple[bool,str]:
-        dywtoend=False ##是否要结束整个代码执行过程
-        newcode=code
-        for key,value in self.ISplugins.items():
-            # print( key +":"+str(len(value))+"\n")
-            for obj in value:
-                try:
-                    newline=obj.on_before_exec(obj,code)
-                    if newline=='':break
-                except Exception as e:
-                    pass
-                finally:pass
-        return dywtoend,newcode
-    def callISp_after_exec(self,returncode,execfile):
-        dywtoend=False ##是否要结束整个代码执行过程
-        for key,value in self.ISplugins.items():
-            # print( key +":"+str(len(value))+"\n")
-            for obj in value:
-                try:
-                    newline=obj.on_after_exec(obj,returncode,execfile)
-                    if newline=='':break
-                except Exception as e:
-                    pass
-                finally:pass
-        return dywtoend
-    def callIBp_before_exec(self,code):
-        dywtoend=False ##是否要结束整个代码执行过程
-        newcode=code
-        for key,value in self.IBplugins.items():
-            # print( key +":"+str(len(value))+"\n")
-            for obj in value:
-                try:
-                    newline=obj.on_before_exec(obj,code)
-                    if newline=='':break
-                except Exception as e:
-                    pass
-                finally:pass
-        return dywtoend,newcode
-    def callIBp_after_exec(self,returncode,execfile):
-        dywtoend=False ##是否要结束整个代码执行过程
-        for key,value in self.IBplugins.items():
-            # print( key +":"+str(len(value))+"\n")
-            for obj in value:
-                try:
-                    newline=obj.on_after_exec(obj,returncode,execfile)
-                    if newline=='':break
-                except Exception as e:
-                    pass
-                finally:pass
-        return dywtoend
-    def callIBplugin(self,key,line):
-        newline=line
-        for key,value in self.IBplugins.items():
-            # print( key +":"+str(len(value))+"\n")
-            for obj in value:
-                try:
-                    newline=obj.on_IBpCodescanning(obj,key,newline)
-                    if newline=='':break
-                except Exception as e:
-                    pass
-                finally:pass
-    def callISplugin(self,key,value,magics):
-        newline=value
-        for key,value in self.IDplugins.items():
-            # print( key +":"+str(len(value))+"\n")
-            for obj in value:
-                try:
-                    newline=obj.on_ISpCodescanning(obj,key,value,magics)
-                    if newline=='':break
-                except Exception as e:
-                    pass
-                finally:pass
-        return ''
-    def callIDplugin(self,line):
-        newline=line
-        for key,value in self.IDplugins.items():
-            # print( key +":"+str(len(value))+"\n")
-            for obj in value:
-                try:
-                    newline=obj.on_IDpReorgCode(obj,newline)
-                    if newline=='':break
-                except Exception as e:
-                    pass
-                finally:pass
-        return newline
-    def init_plugin(self):
-        mypath = os.path.dirname(os.path.abspath(__file__))
-        idir=os.path.join(mypath,'../plugins')
-        sys.path.append(mypath)
-        sys.path.append(idir)
-        for f in os.listdir(idir):
-            if os.path.isfile(os.path.join(idir,f)):
-                try:
-                    name=os.path.splitext(f)[0]
-                    if name!='pluginmng' and name!='kernel' and(spec := importlib.util.find_spec(name)) is not None:
-                        module = importlib.import_module(name)
-                        for name1, obj in inspect.getmembers(module,
-                            lambda obj: 
-                                callable(obj) 
-                                and inspect.isclass(obj) 
-                                and not inspect.isabstract(obj) 
-                                and issubclass(obj,ITag)
-                                ):
-                            # self._write_to_stdout("\n"+obj.__name__+"\n")
-                            self.pluginRegister(obj)
-                    else:
-                        pass
-                except Exception as e:
-                    pass
-                finally:
-                    pass
+        p.write_contents(magics)
+        # wait for threads to finish, so output is always shown
+        p._stdout_thread.join()
+        p._stderr_thread.join()
+        p.write_contents(magics)
+        return_code=p.returncode
+        bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,3,3)
+        if bcancel_exec:return bcancel_exec,retinfo,magics, code,fil_ename,retstr
+        # now remove the files we have just created
+        # if(os.path.exists(source_file.name)):
+            # os.remove(source_file.name)
+        # if(os.path.exists(binary_filename)):
+            # os.remove(binary_filename)
+        # if p.returncode != 0:
+            # self._write_to_stderr("[C kernel] Executable exited with code {}".format(p.returncode))
+        return bcancel_exec,retinfo,magics, code,fil_ename,retstr
+    def do_compile_code(self,return_code,fil_ename,magics,code, silent, store_history=True,
+                    user_expressions=None, allow_stdin=True):
+        return_code=0
+        fil_ename=fil_ename
+        sourcefilename=fil_ename
+        bcancel_exec=False
+        retinfo=self.get_retinfo()
+        retstr=''
+        # Generate executable file :being
+        bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,2,1)
+        if bcancel_exec:return  bcancel_exec,retinfo,magics, code,fil_ename,retstr
+        if len(self.addkey2dict(magics,'file'))>0:
+            fil_ename=magics['file'][0]
+        # else: fil_ename=sourcefilename
+        returncode,binary_filename=self._exec_gcc_(fil_ename,magics)
+        fil_ename=binary_filename
+        return_code=returncode
+        bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,2,2)
+        if bcancel_exec:return  bcancel_exec,self.get_retinfo()
+        if returncode!=0:return  True,retinfo, code,fil_ename,retstr
+        # Generate executable file :end
+        return bcancel_exec,retinfo,magics, code,fil_ename,retstr
+    def do_create_codefile(self,magics,code, silent, store_history=True,
+                    user_expressions=None, allow_stdin=True):
+        return_code=0
+        fil_ename=''
+        sourcefilename=''
+        bcancel_exec=False
+        retinfo=self.get_retinfo()
+        retstr=''
+        bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,1,1)
+        if bcancel_exec:return  bcancel_exec,self.get_retinfo(),magics, code,fil_ename,retstr
+        with self.new_temp_file(suffix='.c') as source_file:
+            source_file.write(code)
+            source_file.flush()
+            sourcefilename=source_file.name 
+            newsrcfilename=source_file.name 
+            fil_ename=newsrcfilename
+            return_code=True
+            # Generate new src file
+            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,1,2)
+            if bcancel_exec:return  bcancel_exec,self.get_retinfo(),magics, code,fil_ename,retstr
+            # if len(self.addkey2dict(magics,'onlycsfile'))>0:
+            #     if len(self.addkey2dict(magics,'file'))<1:
+            #         self._log("no file name parameter\n",2)
+            #     return {'status': 'ok', 'execution_count': self.execution_count, 'payload': [], 'user_expressions': {}}
+            bcancel_exec,retinfo,magics, code,fil_ename,retstr=self.do_compile_code(return_code,fil_ename,magics,code, silent, store_history=store_history,
+                    user_expressions=user_expressions, allow_stdin=allow_stdin)
+            if bcancel_exec:return  bcancel_exec,self.get_retinfo(),magics, code,fil_ename,retstr
+        if len(self.addkey2dict(magics,'onlyrungcc'))>0:
+            self._log("only run gcc \n")
+        return  bcancel_exec,self.get_retinfo(),magics, code,fil_ename,retstr
+    def do_preexecute(self,code,magics, silent, store_history=True,
+                user_expressions=None, allow_stdin=False):
+        bcancel_exec=False
+        retinfo=self.get_retinfo()
+        # magics, code = self._filter_magics(code)
+        # magics, code = self.mag.filter(code)
+        if len(self.addkey2dict(magics,'replcmdmode'))>0:
+            bcancel_exec=True
+            retinfo= self.send_replcmd(code, silent, store_history=store_history,
+                user_expressions=user_expressions, allow_stdin=allow_stdin)
+            return bcancel_exec,retinfo,magics, code
+        if len(magics['rungdb'])>0:
+            bcancel_exec=True
+            retinfo= self.replgdb_sendcmd(code,silent, store_history,
+                user_expressions, allow_stdin)
+            return bcancel_exec,retinfo,magics, code
+        if magics['runmode']=='repl':
+            if hasattr(self, 'replcmdwrapper'):
+                if self.replcmdwrapper :
+                    bcancel_exec=True
+                    retinfo= self.repl_sendcmd(code, silent, store_history,
+                        user_expressions, allow_stdin,magics)
+                    return bcancel_exec,retinfo,magics, code
+        #FIXME:
+        if len(self.addkey2dict(magics,'onlyruncmd'))>0:
+            return bcancel_exec,retinfo,magics, code
+        if len(self.addkey2dict(magics,'onlycsfile'))<1 :
+            magics, code = self._add_main(magics, code)
+        return bcancel_exec,retinfo,magics, code

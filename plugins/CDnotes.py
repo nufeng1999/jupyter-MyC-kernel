@@ -26,22 +26,15 @@ class MyCDnotes(IDtag):
         return
     def on_IDpReorgCode(self,line) -> str:
         # self.kobj._write_to_stdout(line+" hon_IDpReorgCode\n")
-        #  self.addkey2dict(magics,'dartcmd')
         return self.cleancqm(self,line)
         # return ''
-    def on_before_buildfile(self,code,magics)->Tuple[bool,str]:
+    def on_before_compile(self,code)->Tuple[bool,str]:
         return False,''
-    def on_after_buildfile(self,returncode,srcfile,magics)->bool:
+    def on_after_compile(self,returncode,binfile)->bool:
         return False
-    def on_before_compile(self,code,magics)->Tuple[bool,str]:
+    def on_before_exec(self,code)->Tuple[bool,str]:
         return False,''
-    def on_after_compile(self,returncode,binfile,magics)->bool:
-        return False
-    def on_before_exec(self,code,magics)->Tuple[bool,str]:
-        return False,''
-    def on_after_exec(self,returncode,srcfile,magics)->bool:
-        return False
-    def on_after_completion(self,returncode,execfile,magics)->bool:
+    def on_after_exec(self,returncode,srcfile)->bool:
         return False
     def _is_cqm_begin(self,line):
         if line==None or line=='':return ''
