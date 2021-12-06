@@ -217,7 +217,7 @@ class MyKernel(Kernel):
             cpstr=cpstr+":"+jarfile+":"+targetdir
             if cpstr.strip().startswith(':'):
                 cpstr=cpstr[1:] 
-            self._log(cpstr)
+            # self._log(cpstr)
             magics['joptions'][index+1]=cpstr
     isjj2code=False
     def _is_jj2_begin(self,line):
@@ -379,6 +379,8 @@ class MyKernel(Kernel):
             d={key:[]}
             magics.update(d)
         return magics[key]
+    def get_magicsbykey(self,magics:Dict,key:str):
+        return self.addkey2dict(magics,key)
     def replacemany(self,our_str, to_be_replaced:str, replace_with:str):
         while (to_be_replaced in our_str):
             our_str = our_str.replace(to_be_replaced, replace_with)
@@ -455,6 +457,7 @@ class MyKernel(Kernel):
                 if(os.path.exists(file)):
                     os.remove(file)
     def new_temp_file(self, **kwargs):
+        # We don't want the file to be deleted when closed, but only when the kernel stops
         kwargs['delete'] = False
         kwargs['mode'] = 'w'
         file = tempfile.NamedTemporaryFile(**kwargs)
@@ -536,6 +539,7 @@ class MyKernel(Kernel):
             if magics !=None and len(magics['outputtype'])>0:
                 self._write_display_data(mimetype=magics['outputtype'],contents=output)
                 return
+            # Send standard output
             stream_content = {'name': 'stdout', 'text': output}
             self.send_response(self.iopub_socket, 'stream', stream_content)
     def send_replcmd(self, code, silent, store_history=True,
@@ -662,9 +666,13 @@ class MyKernel(Kernel):
         return
     def send_cmd(self,pid,cmd):
         try:
+            # self._write_to_stdout("send cmd PID:"+pid+"\n cmd:"+cmd)
+            # if self.g_rtsps.has_key(pid):
+                # self._write_to_stderr("[MyPythonkernel] Info:exist! "+pid+"\n")
+            # self.g_rtsps[pid].stdin.write(cmd.encode())
             self.g_rtsps[pid]._write_to_stdout(cmd)
         except Exception as e:
-            self._write_to_stderr("[MyPythonkernel] Error:Executable send_cmd error! "+str(e)+"\n")
+            self._log("Executable send_cmd error! "+str(e)+"\n")
         return
     def create_jupyter_subprocess(self, cmd,cwd=None,shell=False,env=None):
         try:
@@ -749,30 +757,128 @@ class MyKernel(Kernel):
             bcancel_exec,retinfo,magics, code,fil_ename,class_filename,outpath,retstr=self.do_create_codefile(magics,code, silent, store_history=store_history,
                 user_expressions=user_expressions, allow_stdin=allow_stdin)
             if bcancel_exec:return retinfo
-            bcancel_exec,retinfo,magics, code,fil_ename,retstr=self.do_runcode(return_code,fil_ename,class_filename,outpath,magics,code, silent, store_history=store_history,
+            bcancel_exec,retinfo,magics, code,fil_ename,retstr=self.do_runcode(return_code,
+                fil_ename,class_filename,outpath,magics,code, 
+                silent, store_history=store_history,user_expressions=user_expressions, allow_stdin=allow_stdin)
+            if bcancel_exec:return retinfo
+        except Exception as e:
+            self._log("???"+str(e),3)
+        return self.get_retinfo()
+    def do_execute_runprg(self, code, magics,silent, store_history=True,
+                   user_expressions=None, allow_stdin=True):
+        try:
+            bcancel_exec,retinfo,magics, code=self.dor_preexecute(code,magics, silent, store_history=store_history,
+                user_expressions=user_expressions, allow_stdin=allow_stdin)
+            if bcancel_exec:return retinfo
+            return_code=0
+            fil_ename=''
+            bcancel_exec,retinfo,magics, code,fil_ename,retstr=self.dor_create_codefile(magics,code, silent, store_history=store_history,
+                user_expressions=user_expressions, allow_stdin=allow_stdin)
+            if bcancel_exec:return retinfo
+            bcancel_exec,retinfo,magics, code,fil_ename,retstr=self.dor_runcode(return_code,fil_ename,magics,code, silent, store_history=store_history,
                 user_expressions=user_expressions, allow_stdin=allow_stdin)
             if bcancel_exec:return retinfo
         except Exception as e:
             self._log(""+str(e),3)
         return self.get_retinfo()
+    def dor_runcode(self,return_code,fil_ename,magics,code, silent, store_history=True,
+                    user_expressions=None, allow_stdin=True):    
+        return_code=return_code
+        fil_ename=fil_ename
+        bcancel_exec=False
+        retinfo=self.get_retinfo()
+        retstr=''
+        runprg=self.get_magicsbykey(magics,'runprg')
+        runprgargs=self.get_magicsbykey(magics,'runprgargs')
+        bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,3,1)
+        if bcancel_exec:return bcancel_exec,retinfo,magics, code,fil_ename,retstr
+        self._logln("The process :"+fil_ename)
+        p = self.create_jupyter_subprocess([runprg]+ runprgargs,cwd=None,shell=False,env=self.addkey2dict(magics,'env'))
+        self.g_rtsps[str(p.pid)]=p
+        return_code=p.returncode
+        bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,3,2)
+        if bcancel_exec:return bcancel_exec,retinfo,magics, code,fil_ename,retstr
+        if len(self.addkey2dict(magics,'showpid'))>0:
+            self._write_to_stdout("The process PID:"+str(p.pid)+"\n")
+        while p.poll() is None:
+            p.write_contents(magics)
+        self._write_to_stdout("The process end:"+str(p.pid)+"\n")
+        # wait for threads to finish, so output is always shown
+        p._stdout_thread.join()
+        p._stderr_thread.join()
+        # del self.g_rtsps[str(p.pid)]
+        p.write_contents(magics)
+        return_code=p.returncode
+        bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,3,3)
+        if bcancel_exec:return bcancel_exec,retinfo,magics, code,fil_ename,retstr
+        if p.returncode != 0:
+            self._log("Executable exited with code {}".format(p.returncode),2)
+        return bcancel_exec,retinfo,magics, code,fil_ename,retstr
+    def dor_create_codefile(self,magics,code, silent, store_history=True,
+                    user_expressions=None, allow_stdin=True):    
+        return_code=0
+        fil_ename=''
+        bcancel_exec=False
+        retinfo=self.get_retinfo()
+        retstr=''
+        bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,1,1)
+        if bcancel_exec:return bcancel_exec,retinfo,magics, code,fil_ename,retstr
+        with self.new_temp_file(suffix='.py',dir=os.path.abspath('')) as source_file:
+            source_file.write(code)
+            source_file.flush()
+            newsrcfilename=source_file.name
+            fil_ename=newsrcfilename
+            return_code=True
+            # Generate new src file
+            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,1,2)
+            if bcancel_exec:return bcancel_exec,retinfo,magics, code,fil_ename,retstr
+            if len(self.addkey2dict(magics,'file'))>0:
+                    fil_ename=magics['file'][0]
+            else: fil_ename=source_file.name
+        if len(self.addkey2dict(magics,'noruncode'))>0:
+            bcancel_exec=True
+            retinfo= self.get_retinfo()
+            return bcancel_exec,retinfo,magics, code,fil_ename,retstr
+        return bcancel_exec,retinfo,magics, code,fil_ename,retstr
+    def dor_preexecute(self,code,magics,silent, store_history=True,
+                user_expressions=None, allow_stdin=False):        
+        bcancel_exec=False
+        retinfo=self.get_retinfo()
+        if len(self.addkey2dict(magics,'replcmdmode'))>0:
+            bcancel_exec=True
+            retinfo= self.send_replcmd(code, silent, store_history=store_history,
+                user_expressions=user_expressions, allow_stdin=allow_stdin)
+            return bcancel_exec,retinfo,magics, code
+        if (len(self.addkey2dict(magics,'noruncode'))>0 
+            and ( len(self.addkey2dict(magics,'command'))>0 
+            or len(self.addkey2dict(magics,'pythoncmd'))>0)):
+            bcancel_exec=True
+        return bcancel_exec,retinfo,magics, code
     def do_execute(self, code, silent, store_history=True,
                    user_expressions=None, allow_stdin=True):
         self.silent = silent
+        retinfo=self.get_retinfo()
         magics, code = self.mag.filter(code)
+        if(len(self.get_magicsbykey(magics,'runprg'))>0):
+            retinfo=self.do_execute_runprg(code, magics,silent, store_history,
+                   user_expressions, allow_stdin)
+            self.cleanup_files()
+            return retinfo
         if(self.runfiletype=='script'):
-            self.do_execute_script(code, magics,silent, store_history,
+            retinfo=self.do_execute_script(code, magics,silent, store_history,
                    user_expressions, allow_stdin)
         elif(self.runfiletype=='class'):
-            self.do_execute_class(code, magics,silent, store_history,
+            retinfo=self.do_execute_class(code, magics,silent, store_history,
                    user_expressions, allow_stdin=True)
         elif(self.runfiletype=='exe'):
-            self.do_execute_script(code, magics,silent, store_history,
+            retinfo=self.do_execute_script(code, magics,silent, store_history,
                    user_expressions, allow_stdin)
         self.cleanup_files()
-        return 
+        return retinfo
     def do_shutdown(self, restart):
         self.g_chkreplexit=False
         self.chk_replexit_thread.join()
+        # self.onkernelshutdown()
         self.cleanup_files()
     ISplugins={"0":[],
          "1":[],

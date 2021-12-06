@@ -60,6 +60,8 @@ class Magics():
                   'package': '',
                   'main': '',
                   'pubclass': '',
+                  'runprg': '',
+                  'runprgargs': [],
                   'repllistpid': [],
                   'replcmdmode': [],
                   'replprompt': [],
@@ -147,6 +149,11 @@ class Magics():
                             self.kobj.send_cmd(pid=pid,cmd=cmd)
                 elif key == "outputtype":
                     magics[key]=value
+                elif key == "runprg":
+                    magics['runprg'] = value
+                elif key == "runprgargs":
+                    for argument in re.findall(r'(?:[^\s,"]|"(?:\\.|[^"])*")+', value):
+                        magics['runprgargs'] += [argument.strip('"')]
                 elif key == "args":
                     for argument in re.findall(r'(?:[^\s,"]|"(?:\\.|[^"])*")+', value):
                         magics['args'] += [argument.strip('"')]
