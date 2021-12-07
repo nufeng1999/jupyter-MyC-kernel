@@ -27,6 +27,9 @@ class MyTest(IBtag):
         self.kobj.addkey2dict(magics,'test')
         magics['test'] = ['true']
         return ''
+    def on_Codescanning(self,magics,code)->Tuple[bool,str]:
+        pass
+        return False,code
     def on_before_buildfile(self,code,magics)->Tuple[bool,str]:
         return False,''
     def on_after_buildfile(self,returncode,srcfile,magics)->bool:

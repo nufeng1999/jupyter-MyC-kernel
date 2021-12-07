@@ -27,6 +27,9 @@ class MyTemplatefile(IStag):
         # self.kobj._write_to_stdout(line+" on_ISpCodescanning\n")
         self.kobj.addkey2dict(magics,'templatefile')
         return self.templatehander(self,key, value,magics,line)
+    def on_Codescanning(self,magics,code)->Tuple[bool,str]:
+        pass
+        return False,code
     def on_before_buildfile(self,code,magics)->Tuple[bool,str]:
         return False,''
     def on_after_buildfile(self,returncode,srcfile,magics)->bool:
@@ -53,7 +56,7 @@ class MyTemplatefile(IStag):
         templatefile=magics['templatefile'][0]
         if len(magics['templatefile'])>1:
             argsstr=magics['templatefile'][1]
-            templateargsdict=self._filter_dict(argsstr)
+            templateargsdict=self.kobj.resolving_eqval2dict(argsstr)
         else:
             templateargsdict=None
         if len(magics['templatefile'])>0:

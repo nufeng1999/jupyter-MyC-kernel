@@ -28,7 +28,7 @@ import time
 import importlib
 import importlib.util
 import inspect
-from plugins.ISpecialID import IStag,IDtag,IBtag,ITag
+from plugins.ISpecialID import IStag,IDtag,IBtag,ITag,ICodePreproc
 from plugins._filter2_magics import Magics
 #
 #   MyPython Jupyter Kernel
@@ -194,7 +194,7 @@ class MyKernel(Kernel):
         self.chk_replexit_thread.daemon = True
         self.chk_replexit_thread.start()
         self.init_plugin()
-        self.mag=Magics(self,self.plugins)
+        self.mag=Magics(self,self.plugins,self.ICodePreprocs)
     silent=None
     jinja2_env = Environment()
     g_rtsps={}
@@ -219,81 +219,33 @@ class MyKernel(Kernel):
                 cpstr=cpstr[1:] 
             # self._log(cpstr)
             magics['joptions'][index+1]=cpstr
-    isjj2code=False
-    def _is_jj2_begin(self,line):
-        if line==None or line=='':return ''
-        return line.strip().startswith('##jj2_begin') or line.strip().startswith('//jj2_begin')
-    def _is_jj2_end(self,line):
-        if line==None or line=='':return ''
-        return line.strip().startswith('##jj2_end') or line.strip().startswith('//jj2_end')
-    jj2code_cache=[]
-    jj2code_args={}
-    def cleanjj2code_cache(self,):
-        self.jj2code_cache.clear()
-        self.jj2code_args={}
-    def addjj2codeline(self,line):
-        self.jj2code_cache+=[line]
-    def getjj2code(self):
-        if len(self.jj2code_cache)<1:return ''
-        code=''.join(line+'\n' for line in self.jj2code_cache)
-        return code
-    def execjj2code_cache(self) -> str:
-        code=self.getjj2code()
-        if code==None or code.strip()=='': return code
-        env = Environment()
-        template = Template(code)
-        # self.process_output('render\n')
-        # for key in self.jj2code_args:
-            # self.process_output(key+':'+self.jj2code_args[key])
-        ret=template.render(self.jj2code_args)
-        # self.process_output('ret'+'\n')
-        return ret
-    def forcejj2code(self,line): 
-        if not self.isjj2code:
-            istb=self._is_jj2_begin(line)
-            if istb: 
-                self.isjj2code=True
-                if len(line.strip())>15:
-                    argline =line.split(":",1)
-                    # self.process_output(line+'\n')
-                    if len(argline)>1:
-                        argstr=argline[1]
-                        # self.process_output(argstr+' is argstr\n')
-                        tplargs=self.resolving_eqval2_dict(argstr)
-                        self.jj2code_args.update(tplargs)
-                        # self.process_output('jj2code_args.update\n')
-                        # for key in self.jj2code_args:
-                            # self.process_output(key+':'+self.jj2code_args[key])
-                    iste=self._is_jj2_end(line)
-                    if iste:
-                        self.cleanjj2code_cache()
-                        self.isjj2code=False
-                        return ''
-                line= ''
-        iste=self._is_jj2_end(line)
-        if iste:
-            self.isjj2code=False
-            line= ''
-            line=self.execjj2code_cache()
-            self.cleanjj2code_cache()
-            return line
-        if self.isjj2code: self.addjj2codeline(line)
-        line= "" if self.isjj2code else line+"\n"
-        return line
-    def readtemplatefile(self,filename,spacecount=0,*args: t.Any, **kwargs: t.Any):
-        filecode=''
-        newfilecode=''
-        codelist1=None
-        filenm=os.path.join(os.path.abspath(''),filename);
-        if not os.path.exists(filenm):
-            return filecode;
-        template = self.jinja2_env.get_template(filenm)
-        filecode=template.render(*args,**kwargs)
-        for line in filecode.splitlines():
-            if len(line)>0:
-                for t in line:
-                    newfilecode+=' '*spacecount + t+'\n'
-        return newfilecode
+    def resolving_enveqval(self, envstr):
+        if envstr is None or len(envstr.strip())<1:
+            return os.environ
+        # env_dict={}
+        argsstr=self.replacemany(self.replacemany(self.replacemany(envstr.strip(),('  '),' '),('= '),'='),' =','=')
+        pattern = re.compile(r'([^\s*]*)="(.*?)"|([^\s*]*)=(\'.*?\')|([^\s*]*)=(.[^\s]*)')
+        for argument in pattern.findall(argsstr):
+            li=list(argument)
+            li= [i for i in li if i != '']
+            # env_dict[str(li[0])]=li[1]
+            os.environ.setdefault(str(li[0]),li[1])
+        # envstr=str(str(envstr.split("|")).split("=")).replace(" ","").replace("\'","").replace("\"","").replace("[","").replace("]","").replace("\\","")
+        # env_list=envstr.split(",")
+        # for i in range(0,len(env_list),2):
+        #     os.environ.setdefault(env_list[i],env_list[i+1])
+        return os.environ
+    def resolving_eqval2dict(self,argsstr):
+        if not argsstr or len(argsstr.strip())<1:
+            return None
+        env_dict={}
+        argsstr=self.replacemany(self.replacemany(self.replacemany(argsstr.strip(),('  '),' '),('= '),'='),' =','=')
+        pattern = re.compile(r'([^\s*]*)="(.*?)"|([^\s*]*)=(\'.*?\')|([^\s*]*)=(.[^\s]*)')
+        for argument in pattern.findall(argsstr):
+            li=list(argument)
+            li= [i for i in li if i != '']
+            env_dict[str(li[0])]=li[1]
+        return env_dict
     def _is_test_begin(self,line):
         if line==None or line=='':return ''
         return line.strip().startswith('##test_begin') or line.strip().startswith('//test_begin')
@@ -910,6 +862,16 @@ class MyKernel(Kernel):
          "7":[],
          "8":[],
          "9":[]}
+    ICodePreprocs={"0":[],
+         "1":[],
+         "2":[],
+         "3":[],
+         "4":[],
+         "5":[],
+         "6":[],
+         "7":[],
+         "8":[],
+         "9":[]}
     plugins=[ISplugins,IDplugins,IBplugins]
     # mag=Magics(plugins)
     def pluginRegister(self,obj):
@@ -923,6 +885,8 @@ class MyKernel(Kernel):
                 self.IDplugins[str(priority)]+=[obj]
             elif not inspect.isabstract(obj) and issubclass(obj,IBtag):
                 self.IBplugins[str(priority)]+=[obj]
+            elif not inspect.isabstract(obj) and issubclass(obj,ICodePreproc):
+                self.ICodePreprocs[str(priority)]+=[obj]
         except Exception as e:
             pass
         pass

@@ -33,9 +33,10 @@ class Magics():
     IBplugins=None
     kobj=None
     plugins=[ISplugins,IDplugins,IBplugins]
-    def __init__(self,kobj,plugins:List):
+    def __init__(self,kobj,plugins:List,ICodePreprocs):
         self.kobj=kobj
         self.plugins=plugins
+        self.ICodePreprocs=ICodePreprocs
         self.ISplugins=self.plugins[0]
         self.IDplugins=self.plugins[1]
         self.IBplugins=self.plugins[2]
@@ -49,6 +50,23 @@ class Magics():
             d={key:[]}
             magics.update(d)
         return magics[key]
+    def raise_ICodescan(self,magics,code)->Tuple[bool,str]:
+        bcancel_exec=False
+        bretcancel_exec=False
+        newcode=code
+        # for pluginlist in self.plugins:
+        for pkey,pvalue in self.ICodePreprocs.items():
+            # print( pkey +":"+str(len(pvalue))+"\n")
+            for pobj in pvalue:
+                try:
+                    bretcancel_exec,newcode=pobj.on_Codescanning(pobj,magics,newcode)
+                    bcancel_exec=bretcancel_exec & bcancel_exec
+                    if bcancel_exec:
+                        return bcancel_exec,newcode
+                except Exception as e:
+                    self.kobj._logln(pobj.getName(pobj)+"---"+str(e))
+                finally:pass
+        return bcancel_exec,newcode
     def filter(self, code):
         actualCode = ''
         newactualCode = ''
@@ -178,6 +196,9 @@ class Magics():
             else:
                 actualCode += line + '\n'
         newactualCode=actualCode
+        bcancel_exec,newcode=self.raise_ICodescan(magics,newactualCode)
+        if not bcancel_exec:
+            newactualCode=newcode
         #_filter2_magics_pend
         if len(self.addkey2dict(magics,'file'))>0 :
             newactualCode=''

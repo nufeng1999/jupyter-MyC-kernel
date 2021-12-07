@@ -28,6 +28,9 @@ class Myonlyruncmd(IBtag):
         magics['onlyruncmd'] = ['true']
         # self.kobj._log(magics['onlyruncmd']+" on_IBpCodescanning\n")
         return ''
+    def on_Codescanning(self,magics,code)->Tuple[bool,str]:
+        pass
+        return False,code
     def on_before_buildfile(self,code,magics)->Tuple[bool,str]:
         return True,''
     def on_after_buildfile(self,returncode,srcfile,magics)->bool:

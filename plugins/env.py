@@ -25,9 +25,12 @@ class Myenv(IStag):
     def on_ISpCodescanning(self,key, value,magics,line) -> str:
         # self.kobj._write_to_stdout(line+" on_ISpCodescanning\n")
         self.kobj.addkey2dict(magics,'env')
-        envdict=self.kobj._filter_env(value)
+        envdict=self.kobj.resolving_enveqval(value)
         magics[key] =dict(envdict)
         return ''
+    def on_Codescanning(self,magics,code)->Tuple[bool,str]:
+        pass
+        return False,code
     def on_before_buildfile(self,code,magics)->Tuple[bool,str]:
         return False,''
     def on_after_buildfile(self,returncode,srcfile,magics)->bool:

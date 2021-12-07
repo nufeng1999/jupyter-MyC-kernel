@@ -18,37 +18,33 @@ class ITag(metaclass=ABCMeta):
     @abstractmethod
     def setKernelobj(self,kobj):
         pass
-    @abstractmethod
+    def on_Codescanning(self,magics,code)->Tuple[bool,str]:
+        return False,code
     def on_before_buildfile(self,code,magics)->Tuple[bool,str]:
-        pass
-    @abstractmethod
+        return False,''
     def on_after_buildfile(self,returncode,srcfile,magics)->bool:
-        pass
-    @abstractmethod
+        return False
     def on_shutdown(self, restart):
-        pass
-    @abstractmethod
+        return False
     def on_before_compile(self,code,magics)->Tuple[bool,str]:
-        pass
-    @abstractmethod
+        return False,''
     def on_after_compile(self,returncode,binfile,magics)->bool:
-        pass
-    @abstractmethod
+        return False
     def on_before_exec(self,code,magics)->Tuple[bool,str]:
-        pass
-    @abstractmethod
+        return False,''
     def on_after_exec(self,returncode,execfile,magics)->bool:
-        pass
-    @abstractmethod
+        return False
     def on_after_completion(self,returncode,execfile,magics)->bool:
-        pass
+        return False
+class ICodePreproc(ITag):
+    def on_Codescanning(self,magics,code)->Tuple[bool,str]:
+        return False,code
 class IStag(ITag):
     @abstractmethod
     def getIDSptag(self) -> List[str]:
         pass
-    @abstractmethod
     def on_ISpCodescanning(self,key, value,magics,line) -> str:
-        pass
+        return line
 class IDtag(ITag):
     @abstractmethod
     def getIDDpbegintag(self) -> List[str]:
@@ -56,13 +52,11 @@ class IDtag(ITag):
     @abstractmethod
     def getIDDpendtag(self) -> List[str]:
         pass
-    @abstractmethod
     def on_IDpReorgCode(self,line) -> str:
-        pass
+        return line
 class IBtag(ITag):
     @abstractmethod
     def getIDBptag(self) -> List[str]:
         pass
-    @abstractmethod
     def on_IBpCodescanning(self,magics,line) -> str:
-        pass
+        return line

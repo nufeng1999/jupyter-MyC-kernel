@@ -17,7 +17,7 @@ class MyFile(IStag):
     def getExcludeID(self)->List[str]:
         return []
     def getIDSptag(self) -> List[str]:
-        return ['file']
+        return ['file','saveto']
     def setKernelobj(self,obj):
         self.kobj=obj
         # self.kobj._write_to_stdout("setKernelobj setKernelobj setKernelobj\n")
@@ -35,6 +35,9 @@ class MyFile(IStag):
         except Exception as e:
             self.kobj._log(str(e),2)
         return ''
+    def on_Codescanning(self,magics,code)->Tuple[bool,str]:
+        pass
+        return False,code
     def on_before_buildfile(self,code,magics)->Tuple[bool,str]:
         return False,''
     def on_after_buildfile(self,returncode,srcfile,magics)->bool:

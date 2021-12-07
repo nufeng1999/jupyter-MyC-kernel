@@ -26,6 +26,9 @@ class Mykcommand(IStag):
         # self.kobj._write_to_stdout(line+" on_ISpCodescanning\n")
         self.kobj.addkey2dict(magics,'kcmd')
         return self.commandhander(self,key, value,magics,line)
+    def on_Codescanning(self,magics,code)->Tuple[bool,str]:
+        pass
+        return False,code
     def on_before_buildfile(self,code,magics)->Tuple[bool,str]:
         return False,''
     def on_after_buildfile(self,returncode,srcfile,magics)->bool:
