@@ -210,8 +210,8 @@ class Magics():
             newactualCode=''
             for line in actualCode.splitlines():
                 try:
-                    if len(self.addkey2dict(magics,'test'))<1:
-                        line=self.kobj.cleantestcode(line)
+                    # if len(self.addkey2dict(magics,'test'))<1:
+                    line=self.kobj.cleantestcode(line)
                     if line=='':continue
                     line=self.kobj.callIDplugin(line)
                     if line=='':continue
