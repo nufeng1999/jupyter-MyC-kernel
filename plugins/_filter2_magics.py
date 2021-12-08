@@ -70,11 +70,14 @@ class Magics():
     def filter(self, code):
         actualCode = ''
         newactualCode = ''
-        magics = {'cflags': [],
+        magics = {'codefilename':'',
+                  'classname':'',
+                  'cflags': [],
                   'ldflags': [],
                   'dlrun': [],
                   'coptions': [],
                   'joptions': [],
+                  'onlyrunmagics': '',
                   'package': '',
                   'main': '',
                   'pubclass': '',
@@ -118,6 +121,9 @@ class Magics():
                 if line.strip()[3:] == "repllistpid":
                     magics['repllistpid'] += ['true']
                     self.repl_listpid()
+                    continue
+                elif line.strip()[3:] == "onlyrunmagics":
+                    magics['onlyrunmagics'] = 'true'
                     continue
                 elif line.strip()[3:] == "replcmdmode":
                     magics['replcmdmode'] += ['replcmdmode']

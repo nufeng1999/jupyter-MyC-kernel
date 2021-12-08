@@ -155,6 +155,16 @@ class RealTimeSubprocess(subprocess.Popen):
                 self.stdin.write(readLine.encode())
             else:
                 self._write_to_stdout(contents,magics)
+    def wait_end(self,magics):
+        while self.poll() is None:
+            self.write_contents(magics)
+        self._write_to_stdout("The process end:"+str(p.pid)+"\n",magics)
+        self.write_contents(magics)
+        # wait for threads to finish, so output is always shown
+        self._stdout_thread.join()
+        self._stderr_thread.join()
+        self.write_contents(magics)
+        return self.returncode
 class MyKernel(Kernel):
     implementation = 'jupyter-MyPython-kernel'
     implementation_version = '1.0'
@@ -415,6 +425,13 @@ class MyKernel(Kernel):
         file = tempfile.NamedTemporaryFile(**kwargs)
         self.files.append(file.name)
         return file
+    def create_codetemp_file(self,magics,code,suffix):
+        source_file=self.new_temp_file(suffix='.py',dir=os.path.abspath(''))
+        magics['codefilename']=source_file.name
+        with  source_file:
+            source_file.write(code)
+            source_file.flush()
+        return source_file
     def _log(self, output,level=1,outputtype='text/plain'):
         streamname='stdout'
         if not self.silent:
@@ -681,17 +698,43 @@ class MyKernel(Kernel):
     def do_execute_script(self, code, magics,silent, store_history=True,
                    user_expressions=None, allow_stdin=True):
         try:
-            bcancel_exec,retinfo,magics, code=self.do_preexecute(code,magics, silent, store_history=store_history,
-                user_expressions=user_expressions, allow_stdin=allow_stdin)
+            bcancel_exec,retinfo,magics, code=self.do_preexecute(
+                code,magics, 
+                silent, store_history,user_expressions, allow_stdin)
             if bcancel_exec:return retinfo
             return_code=0
             fil_ename=''
-            bcancel_exec,retinfo,magics, code,fil_ename,retstr=self.do_create_codefile(magics,code, silent, store_history=store_history,
-                user_expressions=user_expressions, allow_stdin=allow_stdin)
+            retstr=''
+            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,1,1)
+            if bcancel_exec:return  self.get_retinfo()
+            bcancel_exec,retinfo,magics, code,fil_ename,retstr=self.do_create_codefile(
+                magics,code, 
+                silent, store_history,user_expressions, allow_stdin)
             if bcancel_exec:return retinfo
-            bcancel_exec,retinfo,magics, code,fil_ename,retstr=self.do_runcode(return_code,fil_ename,magics,code, silent, store_history=store_history,
-                user_expressions=user_expressions, allow_stdin=allow_stdin)
+            code,magics,return_code,fil_ename
+            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,1,2)
+            if bcancel_exec:return  self.get_retinfo()
+            fil_ename=magics['codefilename']
+            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,2,1)
+            if bcancel_exec:return  self.get_retinfo()
+            bcancel_exec,retinfo,magics, code,fil_ename,retstr=self.do_compile_code(
+                return_code,fil_ename,magics,code, 
+                silent, store_history,user_expressions, allow_stdin)
+            if bcancel_exec:return  retinfo
+            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,2,2)
+            if bcancel_exec:return  self.get_retinfo()
+            if len(self.addkey2dict(magics,'noruncode'))>0:
+                bcancel_exec=True
+                return self.get_retinfo()
+            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,3,1)
+            if bcancel_exec:return self.get_retinfo()
+            self._logln("The process :"+fil_ename)
+            bcancel_exec,retinfo,magics, code,fil_ename,retstr=self.do_runcode(
+                return_code,fil_ename,magics,code, 
+                silent, store_history,user_expressions, allow_stdin)
             if bcancel_exec:return retinfo
+            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,3,3)
+            if bcancel_exec:return self.get_retinfo()
         except Exception as e:
             self._log(""+str(e),3)
         return self.get_retinfo()
@@ -701,35 +744,78 @@ class MyKernel(Kernel):
             return_code=0
             fil_ename=''
             outpath=''
-            bcancel_exec,retinfo,magics, code=self.do_preexecute(code, magics,silent, store_history=store_history,
-                user_expressions=user_expressions, allow_stdin=allow_stdin)
+            bcancel_exec,retinfo,magics, code=self.do_preexecute(
+                code, magics,
+                silent, store_history,user_expressions, allow_stdin)
             if bcancel_exec:return retinfo
             return_code=0
             fil_ename=''
-            bcancel_exec,retinfo,magics, code,fil_ename,class_filename,outpath,retstr=self.do_create_codefile(magics,code, silent, store_history=store_history,
-                user_expressions=user_expressions, allow_stdin=allow_stdin)
+            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,1,1)
+            if bcancel_exec:return  self.get_retinfo()
+            bcancel_exec,retinfo,magics, code,fil_ename,class_filename,outpath,retstr=self.do_create_codefile(
+                magics,code, 
+                silent, store_history,user_expressions, allow_stdin)
             if bcancel_exec:return retinfo
-            bcancel_exec,retinfo,magics, code,fil_ename,retstr=self.do_runcode(return_code,
-                fil_ename,class_filename,outpath,magics,code, 
-                silent, store_history=store_history,user_expressions=user_expressions, allow_stdin=allow_stdin)
+            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,1,2)
+            if bcancel_exec:return  self.get_retinfo()
+            fil_ename=magics['codefilename']
+            if len(self.addkey2dict(magics,'noruncode'))>0:
+                bcancel_exec=True
+                return self.get_retinfo()
+            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,2,1)
+            if bcancel_exec:return  self.get_retinfo()
+            bcancel_exec,retinfo,magics, code,fil_ename,class_filename,outpath,retstr=self.do_compile_code(
+                return_code,fil_ename,magics,code, 
+                silent, store_history,user_expressions, allow_stdin)
+            if bcancel_exec:return  self.get_retinfo()
+            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,2,2)
+            if bcancel_exec:return  self.get_retinfo()
+            if len(self.addkey2dict(magics,'onlycompile'))>0:
+                self._log("only run compile \n")
+                bcancel_exec=True
+                return retinfo
+            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,3,1)
+            if bcancel_exec:return self.get_retinfo()
+            self._logln("The process :"+class_filename)
+            bcancel_exec,retinfo,magics, code,fil_ename,retstr=self.do_runcode(
+                return_code,fil_ename,class_filename,outpath,magics,code, 
+                silent, store_history,user_expressions, allow_stdin)
             if bcancel_exec:return retinfo
+            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,3,3)
+            if bcancel_exec:return self.get_retinfo()
         except Exception as e:
             self._log("???"+str(e),3)
         return self.get_retinfo()
     def do_execute_runprg(self, code, magics,silent, store_history=True,
                    user_expressions=None, allow_stdin=True):
         try:
-            bcancel_exec,retinfo,magics, code=self.dor_preexecute(code,magics, silent, store_history=store_history,
-                user_expressions=user_expressions, allow_stdin=allow_stdin)
+            bcancel_exec,retinfo,magics, code=self.dor_preexecute(
+                code,magics, 
+                silent, store_history,user_expressions, allow_stdin)
             if bcancel_exec:return retinfo
             return_code=0
             fil_ename=''
-            bcancel_exec,retinfo,magics, code,fil_ename,retstr=self.dor_create_codefile(magics,code, silent, store_history=store_history,
-                user_expressions=user_expressions, allow_stdin=allow_stdin)
+            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,1,1)
+            if bcancel_exec:return  self.get_retinfo()
+            bcancel_exec,retinfo,magics, code,fil_ename,retstr=self.dor_create_codefile(
+                magics,code, 
+                silent, store_history,user_expressions, allow_stdin)
             if bcancel_exec:return retinfo
-            bcancel_exec,retinfo,magics, code,fil_ename,retstr=self.dor_runcode(return_code,fil_ename,magics,code, silent, store_history=store_history,
-                user_expressions=user_expressions, allow_stdin=allow_stdin)
+            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,1,2)
+            if bcancel_exec:return  self.get_retinfo()
+            fil_ename=magics['codefilename']
+            if len(self.addkey2dict(magics,'noruncode'))>0:
+                bcancel_exec=True
+                return self.get_retinfo()
+            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,3,1)
+            if bcancel_exec:return self.get_retinfo()
+            self._logln("The process :"+fil_ename)
+            bcancel_exec,retinfo,magics, code,fil_ename,retstr=self.dor_runcode(
+                return_code,fil_ename,magics,code, 
+                silent, store_history,user_expressions, allow_stdin)
             if bcancel_exec:return retinfo
+            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,3,3)
+            if bcancel_exec:return self.get_retinfo()
         except Exception as e:
             self._log(""+str(e),3)
         return self.get_retinfo()
@@ -742,27 +828,15 @@ class MyKernel(Kernel):
         retstr=''
         runprg=self.get_magicsbykey(magics,'runprg')
         runprgargs=self.get_magicsbykey(magics,'runprgargs')
-        bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,3,1)
-        if bcancel_exec:return bcancel_exec,retinfo,magics, code,fil_ename,retstr
-        self._logln("The process :"+fil_ename)
         p = self.create_jupyter_subprocess([runprg]+ runprgargs,cwd=None,shell=False,env=self.addkey2dict(magics,'env'))
         self.g_rtsps[str(p.pid)]=p
         return_code=p.returncode
         bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,3,2)
-        if bcancel_exec:return bcancel_exec,retinfo,magics, code,fil_ename,retstr
         if len(self.addkey2dict(magics,'showpid'))>0:
-            self._write_to_stdout("The process PID:"+str(p.pid)+"\n")
-        while p.poll() is None:
-            p.write_contents(magics)
-        self._write_to_stdout("The process end:"+str(p.pid)+"\n")
-        # wait for threads to finish, so output is always shown
-        p._stdout_thread.join()
-        p._stderr_thread.join()
-        # del self.g_rtsps[str(p.pid)]
-        p.write_contents(magics)
+            self._logln("The process PID:"+str(p.pid))
+        p.wait_end(magics)
+        self._logln("The process end:"+str(p.pid))
         return_code=p.returncode
-        bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,3,3)
-        if bcancel_exec:return bcancel_exec,retinfo,magics, code,fil_ename,retstr
         if p.returncode != 0:
             self._log("Executable exited with code {}".format(p.returncode),2)
         return bcancel_exec,retinfo,magics, code,fil_ename,retstr
@@ -773,44 +847,28 @@ class MyKernel(Kernel):
         bcancel_exec=False
         retinfo=self.get_retinfo()
         retstr=''
-        bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,1,1)
-        if bcancel_exec:return bcancel_exec,retinfo,magics, code,fil_ename,retstr
-        with self.new_temp_file(suffix='.py',dir=os.path.abspath('')) as source_file:
-            source_file.write(code)
-            source_file.flush()
-            newsrcfilename=source_file.name
-            fil_ename=newsrcfilename
-            return_code=True
-            # Generate new src file
-            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,1,2)
-            if bcancel_exec:return bcancel_exec,retinfo,magics, code,fil_ename,retstr
-            if len(self.addkey2dict(magics,'file'))>0:
-                    fil_ename=magics['file'][0]
-            else: fil_ename=source_file.name
-        if len(self.addkey2dict(magics,'noruncode'))>0:
-            bcancel_exec=True
-            retinfo= self.get_retinfo()
-            return bcancel_exec,retinfo,magics, code,fil_ename,retstr
+        source_file=self.create_codetemp_file(magics,code,suffix='.sh')
+        newsrcfilename=source_file.name
+        fil_ename=newsrcfilename
+        return_code=True
         return bcancel_exec,retinfo,magics, code,fil_ename,retstr
     def dor_preexecute(self,code,magics,silent, store_history=True,
                 user_expressions=None, allow_stdin=False):        
         bcancel_exec=False
         retinfo=self.get_retinfo()
-        if len(self.addkey2dict(magics,'replcmdmode'))>0:
-            bcancel_exec=True
-            retinfo= self.send_replcmd(code, silent, store_history=store_history,
-                user_expressions=user_expressions, allow_stdin=allow_stdin)
-            return bcancel_exec,retinfo,magics, code
-        if (len(self.addkey2dict(magics,'noruncode'))>0 
-            and ( len(self.addkey2dict(magics,'command'))>0 
-            or len(self.addkey2dict(magics,'pythoncmd'))>0)):
-            bcancel_exec=True
         return bcancel_exec,retinfo,magics, code
     def do_execute(self, code, silent, store_history=True,
                    user_expressions=None, allow_stdin=True):
         self.silent = silent
         retinfo=self.get_retinfo()
         magics, code = self.mag.filter(code)
+        if (len(self.addkey2dict(magics,'onlyrunmagics'))>0 or len(self.addkey2dict(magics,'onlyruncmd'))>0):
+            bcancel_exec=True
+            return retinfo
+        if len(self.addkey2dict(magics,'replcmdmode'))>0:
+            bcancel_exec=True
+            retinfo= self.send_replcmd(code, silent, store_history,user_expressions, allow_stdin)
+            return retinfo
         if(len(self.get_magicsbykey(magics,'runprg'))>0):
             retinfo=self.do_execute_runprg(code, magics,silent, store_history,
                    user_expressions, allow_stdin)
@@ -1106,15 +1164,11 @@ class CKernel(MyKernel):
         bcancel_exec=False
         retinfo=self.get_retinfo()
         retstr=''
-        bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,3,1)
-        if bcancel_exec:return bcancel_exec,retinfo,magics, code,fil_ename,retstr
-        self._write_to_stdout("The process :"+fil_ename+"\n")
         #FIXME:
         if magics['runmode']=='repl':
             self._start_replprg(fil_ename,magics['args'],magics)
             return_code=self.replwrapper.child.status
             bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,3,2)
-            # if bcancel_exec:return {'status': 'ok', 'execution_count': self.execution_count, 'payload': [], 'user_expressions': {}}
             return bcancel_exec,retinfo,magics, code,fil_ename,retstr
         #FIXME:
         if len(magics['dlrun'])>0:
@@ -1125,19 +1179,11 @@ class CKernel(MyKernel):
         self.g_rtsps[str(p.pid)]=p
         return_code=p.returncode
         bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,3,2)
-        if bcancel_exec:return bcancel_exec,retinfo,magics, code,fil_ename,retstr
+        # if bcancel_exec:return bcancel_exec,retinfo,magics, code,fil_ename,retstr
         if len(self.addkey2dict(magics,'showpid'))>0:
             self._write_to_stdout("The process PID:"+str(p.pid)+"\n")
-        while p.poll() is None:
-            p.write_contents(magics)
-        p.write_contents(magics)
-        # wait for threads to finish, so output is always shown
-        p._stdout_thread.join()
-        p._stderr_thread.join()
-        p.write_contents(magics)
+        p.wait_end(magics)
         return_code=p.returncode
-        bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,3,3)
-        if bcancel_exec:return bcancel_exec,retinfo,magics, code,fil_ename,retstr
         # now remove the files we have just created
         # if(os.path.exists(source_file.name)):
             # os.remove(source_file.name)
@@ -1154,19 +1200,10 @@ class CKernel(MyKernel):
         bcancel_exec=False
         retinfo=self.get_retinfo()
         retstr=''
-        # Generate executable file :being
-        bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,2,1)
-        if bcancel_exec:return  bcancel_exec,retinfo,magics, code,fil_ename,retstr
-        if len(self.addkey2dict(magics,'file'))>0:
-            fil_ename=magics['file'][0]
-        # else: fil_ename=sourcefilename
         returncode,binary_filename=self._exec_gcc_(fil_ename,magics)
         fil_ename=binary_filename
         return_code=returncode
-        bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,2,2)
-        if bcancel_exec:return  bcancel_exec,self.get_retinfo()
         if returncode!=0:return  True,retinfo, code,fil_ename,retstr
-        # Generate executable file :end
         return bcancel_exec,retinfo,magics, code,fil_ename,retstr
     def do_create_codefile(self,magics,code, silent, store_history=True,
                     user_expressions=None, allow_stdin=True):
@@ -1176,39 +1213,16 @@ class CKernel(MyKernel):
         bcancel_exec=False
         retinfo=self.get_retinfo()
         retstr=''
-        bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,1,1)
-        if bcancel_exec:return  bcancel_exec,self.get_retinfo(),magics, code,fil_ename,retstr
-        with self.new_temp_file(suffix='.c') as source_file:
-            source_file.write(code)
-            source_file.flush()
-            sourcefilename=source_file.name 
-            newsrcfilename=source_file.name 
-            fil_ename=newsrcfilename
-            return_code=True
-            # Generate new src file
-            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,1,2)
-            if bcancel_exec:return  bcancel_exec,self.get_retinfo(),magics, code,fil_ename,retstr
-            # if len(self.addkey2dict(magics,'onlycsfile'))>0:
-            #     if len(self.addkey2dict(magics,'file'))<1:
-            #         self._log("no file name parameter\n",2)
-            #     return {'status': 'ok', 'execution_count': self.execution_count, 'payload': [], 'user_expressions': {}}
-            bcancel_exec,retinfo,magics, code,fil_ename,retstr=self.do_compile_code(return_code,fil_ename,magics,code, silent, store_history=store_history,
-                    user_expressions=user_expressions, allow_stdin=allow_stdin)
-            if bcancel_exec:return  bcancel_exec,self.get_retinfo(),magics, code,fil_ename,retstr
-        if len(self.addkey2dict(magics,'onlyrungcc'))>0:
-            self._log("only run gcc \n")
+        source_file=self.create_codetemp_file(magics,code,suffix='.c')
+        sourcefilename=source_file.name 
+        newsrcfilename=source_file.name
+        fil_ename=newsrcfilename
+        return_code=True
         return  bcancel_exec,self.get_retinfo(),magics, code,fil_ename,retstr
     def do_preexecute(self,code,magics, silent, store_history=True,
                 user_expressions=None, allow_stdin=False):
         bcancel_exec=False
         retinfo=self.get_retinfo()
-        # magics, code = self._filter_magics(code)
-        # magics, code = self.mag.filter(code)
-        if len(self.addkey2dict(magics,'replcmdmode'))>0:
-            bcancel_exec=True
-            retinfo= self.send_replcmd(code, silent, store_history=store_history,
-                user_expressions=user_expressions, allow_stdin=allow_stdin)
-            return bcancel_exec,retinfo,magics, code
         if len(magics['rungdb'])>0:
             bcancel_exec=True
             retinfo= self.replgdb_sendcmd(code,silent, store_history,
@@ -1221,9 +1235,6 @@ class CKernel(MyKernel):
                     retinfo= self.repl_sendcmd(code, silent, store_history,
                         user_expressions, allow_stdin,magics)
                     return bcancel_exec,retinfo,magics, code
-        #FIXME:
-        if len(self.addkey2dict(magics,'onlyruncmd'))>0:
-            return bcancel_exec,retinfo,magics, code
-        if len(self.addkey2dict(magics,'onlycsfile'))<1 :
+        if len(self.addkey2dict(magics,'noruncode'))<1 :
             magics, code = self._add_main(magics, code)
         return bcancel_exec,retinfo,magics, code

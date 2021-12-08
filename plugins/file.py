@@ -43,9 +43,10 @@ class MyFile(IStag):
     def on_after_buildfile(self,returncode,srcfile,magics)->bool:
         # self.kobj._log('on_after_buildfile  file\n',2)
         if len(self.kobj.addkey2dict(magics,'file'))>0:
-                # self.kobj._log("srcfile:"+srcfile+"\n")
-                newsrcfilename = self._fileshander(self,magics['file'],srcfile,magics)
-                self.kobj._log("file "+ newsrcfilename +" created successfully\n")
+            # self.kobj._log("srcfile:"+srcfile+"\n")
+            newsrcfilename = self._fileshander(self,magics['file'],srcfile,magics)
+            magics['codefilename']=newsrcfilename
+            self.kobj._log("file "+ newsrcfilename +" created successfully\n")
         return False
     def on_before_compile(self,code,magics)->Tuple[bool,str]:
         return False,''
