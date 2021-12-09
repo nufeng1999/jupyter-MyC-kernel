@@ -2,28 +2,6 @@
 
 This project was forked from [https://github.com/brendan-rius/jupyter-c-kernel](brendan-rius/jupyter-c-kernel) as that project seems to have been abandoned. (PR is pending)
 
-This project includes fixes to many issues reported in [https://github.com/brendan-rius/jupyter-c-kernel](brendan-rius/jupyter-c-kernel), as well as the following additional features:
-
-* Option for buffered output to mimic command line behaviour (useful for teaching, default is on)
-* Command line input via `scanf` and `getchar`
-* Support for `C89`/`ANSI C` (all newer versions were already supported and still are)
-
-Following limitations compared to command line execution exist:
-
-* Input is always buffered due to limitations of the jupyter interface
-* When using `-ansi` or `-std=C89`, glibc still has to support at least `C99` for the interfacing with jupyter (this should not be an issue on an OS made after 2000)
-
-## Use with Docker (recommended)
-
-* `docker pull xaverklemenschits/jupyter-c-kernel`
-* `docker run -p 8888:8888 xaverklemenschits/jupyter-c-kernel`
-* Copy the given URL containing the token, and browse to it. For instance:
-
- ```bash
- Copy/paste this URL into your browser when you connect for the first time,
- to login with a token:
-    http://localhost:8888/?token=66750c80bd0788f6ba15760aadz53beb9a9fb4cf8ac15ce8
- ```
 
 ## Manual installation
 
@@ -45,37 +23,121 @@ cd jupyter_MyC_kernel && install_MyC_kernel --user # for sys install: sudo insta
 # now you can start the notebook
 jupyter notebook
 ```
+----
+### Support label
+#### Label
+Label prefix is `##%` or `//%`  
+Example1:   
+`##%overwritefile`  
+`##%file:../src/do_execute.c`  
+`##%noruncode`  
+Example2:   
+`##%runprg:ls`  
+`##%runprgargs:-al`  
+Example3:   
+`##//%outputtype:text/html`  
+`##%runprg:bash`   
+`##%runprgargs:test.sh`  
+`##%overwritefile`  
+`##%file:test.sh`  
+`echo "shell cmd test"`   
+`ls`   
 
-## Example of notebook
+----
+#### Compile and run code
 
-![Example of notebook](example-notebook.png?raw=true "Example of notebook")
+| label       |   value   | annotation                                                                                                       |
+| :------------ | :----------: | :----------------------------------------------------------------------------------------------------------------- |
+| cflags:     |            | Specifies the compilation parameters for C language compilation                                                  |
+| ldflags:    |            | Specify the link parameters for C language connection                                                            |
+| args:       |            | Specifies the parameters for the code file runtime                                                               |
+| coptions:   |            | Code compilation time parameters of JVM platform                                                                 |
+| joptions:   |            | Code runtime parameters for the JVM platform                                                                     |
+| runprg:     |            | The code content will be run by the execution file specified by runprg                                           |
+| runprgargs: |            | runprg Parameters of the specified executable ,You can put the name specified by file into the parameter string. |
+| outputtype: | text/plain | mime-type                                                                                                        |
 
-## Custom compilation flags
+---
 
-You can use custom compilation flags like so:
+#### Interactive running code
 
-![Custom compulation flag](custom_flags.png?raw=true "Example of notebook using custom compilation flags")
 
-Here, the `-lm` flag is passed so you can use the math library.
+| label         | value | annotation                                                                                  |
+| :-------------- | :------: | :-------------------------------------------------------------------------------------------- |
+| runmode:      |  repl  | The code will run in interactive mode.                                                      |
+| replcmdmode   |        | (repl interactive mode) to send stdin information to the specified process (repl child PID) |
+| replsetip:    | "\r\n" | Set (repl interactive mode) the prompt string when waiting for input                        |
+| replchildpid: |        | (repl interactive mode) specifies the running process number                                |
+| repllistpid   |        | Lists the interactive process PIDs that are running                                         |
 
-## Contributing
+---
 
-The docker image installs the kernel in editable mode, meaning that you can
-change the code in real-time in Docker. For that, just run the docker box like
-that:
+#### Interactive running GDB
 
-```bash
-git clone https://github.com/XaverKlemenschits/jupyter-c-kernel.git
-cd jupyter-c-kernel
-docker build -t myName/jupyter .
-docker run -v $(pwd):/tmp/jupyter_c_kernel/ -p 8888:8888 myName/jupyter
-```
 
-This clones the source, run the kernel, and binds the current folder (the one
-you just cloned) to the corresponding folder in Docker.
-Now, if you change the source, it will be reflected in [http://localhost:8888](http://localhost:8888)
-instantly. Do not forget to click "restart" the kernel on the page as it does
-not auto-restart.
+| label  | value | annotation                                               |
+| :------- | :-----: | :--------------------------------------------------------- |
+| rungdb |      | Run GDB and send commands to GDB (repl interactive mode) |
+
+---
+
+#### Save code and include file
+
+
+| label         | value | annotation                                               |
+| :-------------- | :-----: | :--------------------------------------------------------- |
+| noruncode     |      | Do not run code content                                  |
+| overwritefile |      | Overwrite existing files                                 |
+| file:         |      | The code can be saved to multiple files                  |
+| include:      |      | Places the specified file contents in the label location |
+
+---
+
+#### Templates and testing
+
+
+| label                                                                                                                                          |
+| :----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Define a macro                                                                                                                                 |
+| define:Define a macro，The content is jinja2 template. example:\#\#%define:M1 this is {{name}}                                                 |
+| &emsp; `##$Macroname` or `//$Macroname` Replace with macro                                                                                    |
+| &emsp; `##$M1` name='jinja2 content' This line will be replaced by this is jinja2 content                                                      |
+| templatefile:                                                                                                                                  |
+| Define template code area                                                                                                                      |
+| \#\#jj2_begin or  //jj2_begin                                                                                                                  |
+| \#\#jj2_end   or  //jj2_end                                                                                                                    |
+| Put template code between jj2_begin and jj2__end ，jj2_begin Followed by parameters example: name='jinja2 content'.example: jj2_begin:name=www |
+| Define test code area                                                                                                                          |
+| ##test_begin  /  //test_begin                                                                                                                  |
+| ##test_end    /  //test_end                                                                                                                    |
+| test_ Begin and test_ End is the test code，Will not be saved to the file                                                                      |
+
+---
+
+#### Commands and environment variables
+
+
+| label       |           value           | annotation                                                                         |
+| :------------ | :-------------------------: | :----------------------------------------------------------------------------------- |
+| command:    |                          | shell command or executable                                                        |
+| pycmd:      |                          | python parameter command                                                           |
+| dartcmd:    |                          | dart parameter command                                                             |
+| fluttercmd: | flutter parameter command |                                                                                    |
+| kcmd:       |                          | jupyter kernel command                                                             |
+| env:        |                          | Setting environment variables for code file runtime.example: name=xxx name2='dddd' |
+
+---
+
+#### Behavior control
+
+
+| label       | value | annotation                 |
+| :------------ | :-----: | :--------------------------- |
+| noruncode   |      | Do not run code content    |
+| onlycsfile  |      | Generate code files only   |
+| onlyruncmd  |      | Run the label command only |
+| onlycompile |      | Compile code content only  |
+
 
 ## License
 
