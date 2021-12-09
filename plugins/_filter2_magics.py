@@ -173,6 +173,11 @@ class Magics():
                             self.kobj.send_cmd(pid=pid,cmd=cmd)
                 elif key == "outputtype":
                     magics[key]=value
+                elif key == "loadurl":
+                    url=value
+                    if(len(url)>0):
+                        line=self.kobj.loadurl(url)
+                        actualCode += line + '\n'
                 elif key == "runprg":
                     magics['runprg'] = value
                 elif key == "runprgargs":

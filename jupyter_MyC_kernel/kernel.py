@@ -11,6 +11,9 @@ from jinja2 import Environment, PackageLoader, select_autoescape,Template
 from abc import ABCMeta, abstractmethod
 from typing import List, Dict, Tuple, Sequence
 from shutil import copyfile
+import urllib.request
+import urllib.parse
+from urllib.request import urlopen
 import pexpect
 import signal
 import typing 
@@ -475,6 +478,19 @@ class MyKernel(Kernel):
             for t in codelist1:
                 filecode+=' '*spacecount + t
         return filecode
+    def loadurl(self,url):
+        content=''
+        try:
+            request=urllib.request.Request(url)
+            myURL = urlopen(request)
+            # content= myURL.read()
+            lines = myURL.readlines()
+            for line in lines:
+                print(line)
+                content+=line.decode()+"\n"
+        except Exception as e:
+            self._logln("loadurl error! "+str(e),3)
+        return content
     def _start_replprg(self,command,args,magics):
         # Signal handlers are inherited by forked processes, and we can't easily
         # reset it from the subprocess. Since kernelapp ignores SIGINT except in
@@ -832,6 +848,7 @@ class MyKernel(Kernel):
         retstr=''
         runprg=self.get_magicsbykey(magics,'runprg')
         runprgargs=self.get_magicsbykey(magics,'runprgargs')
+        self._logln(runprg)
         p = self.create_jupyter_subprocess([runprg]+ runprgargs,cwd=None,shell=False,env=self.addkey2dict(magics,'env'))
         self.g_rtsps[str(p.pid)]=p
         return_code=p.returncode
