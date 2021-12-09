@@ -158,7 +158,7 @@ class RealTimeSubprocess(subprocess.Popen):
     def wait_end(self,magics):
         while self.poll() is None:
             self.write_contents(magics)
-        self._write_to_stdout("The process end:"+str(p.pid)+"\n",magics)
+        self._write_to_stdout("The process end:"+str(self.pid)+"\n",magics)
         self.write_contents(magics)
         # wait for threads to finish, so output is always shown
         self._stdout_thread.join()
@@ -426,7 +426,7 @@ class MyKernel(Kernel):
         self.files.append(file.name)
         return file
     def create_codetemp_file(self,magics,code,suffix):
-        source_file=self.new_temp_file(suffix='.py',dir=os.path.abspath(''))
+        source_file=self.new_temp_file(suffix=suffix,dir=os.path.abspath(''))
         magics['codefilename']=source_file.name
         with  source_file:
             source_file.write(code)
@@ -723,6 +723,10 @@ class MyKernel(Kernel):
             if bcancel_exec:return  retinfo
             bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,2,2)
             if bcancel_exec:return  self.get_retinfo()
+            if len(self.addkey2dict(magics,'onlycompile'))>0:
+                self._log("only run compile \n")
+                bcancel_exec=True
+                return retinfo
             if len(self.addkey2dict(magics,'noruncode'))>0:
                 bcancel_exec=True
                 return self.get_retinfo()
@@ -834,9 +838,9 @@ class MyKernel(Kernel):
         bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,3,2)
         if len(self.addkey2dict(magics,'showpid'))>0:
             self._logln("The process PID:"+str(p.pid))
-        p.wait_end(magics)
-        self._logln("The process end:"+str(p.pid))
-        return_code=p.returncode
+        return_code=p.wait_end(magics)
+        # self._logln("The process end:"+str(p.pid))
+        # return_code=p.returncode
         if p.returncode != 0:
             self._log("Executable exited with code {}".format(p.returncode),2)
         return bcancel_exec,retinfo,magics, code,fil_ename,retstr
@@ -1170,6 +1174,7 @@ class CKernel(MyKernel):
             return_code=self.replwrapper.child.status
             bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,3,2)
             return bcancel_exec,retinfo,magics, code,fil_ename,retstr
+        p=None
         #FIXME:
         if len(magics['dlrun'])>0:
             p = self.create_jupyter_subprocess([self.master_path, fil_ename] + magics['args'],env=self.addkey2dict(magics,'env'))
