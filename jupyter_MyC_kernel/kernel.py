@@ -731,6 +731,9 @@ class MyKernel(Kernel):
             bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,1,2)
             if bcancel_exec:return  self.get_retinfo()
             fil_ename=magics['codefilename']
+            if len(self.addkey2dict(magics,'noruncode'))>0:
+                bcancel_exec=True
+                return self.get_retinfo()
             bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,2,1)
             if bcancel_exec:return  self.get_retinfo()
             bcancel_exec,retinfo,magics, code,fil_ename,retstr=self.do_compile_code(
@@ -743,9 +746,6 @@ class MyKernel(Kernel):
                 self._log("only run compile \n")
                 bcancel_exec=True
                 return retinfo
-            if len(self.addkey2dict(magics,'noruncode'))>0:
-                bcancel_exec=True
-                return self.get_retinfo()
             bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,3,1)
             if bcancel_exec:return self.get_retinfo()
             self._logln("The process :"+fil_ename)
@@ -848,7 +848,8 @@ class MyKernel(Kernel):
         retstr=''
         runprg=self.get_magicsbykey(magics,'runprg')
         runprgargs=self.get_magicsbykey(magics,'runprgargs')
-        self._logln(runprg)
+        if (len(runprgargs)<1):
+            self._logln("No label runprgargs!",2)
         p = self.create_jupyter_subprocess([runprg]+ runprgargs,cwd=None,shell=False,env=self.addkey2dict(magics,'env'))
         self.g_rtsps[str(p.pid)]=p
         return_code=p.returncode
