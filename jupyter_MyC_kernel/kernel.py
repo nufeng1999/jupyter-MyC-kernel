@@ -209,6 +209,22 @@ class MyKernel(Kernel):
         self.chk_replexit_thread.start()
         self.init_plugin()
         self.mag=Magics(self,self.plugins,self.ICodePreprocs)
+    pausestr='''
+get_char()
+{
+SAVEDSTTY=`stty -g`
+stty -echo
+stty cbreak
+dd if=/dev/tty bs=1 count=1 2> /dev/null
+stty -raw
+stty echo
+stty $SAVEDSTTY
+}
+echo ""
+echo "Press any key to start...or Press Ctrl+c to cancel"
+char=`get_char`
+echo "OK"
+'''
     silent=None
     jinja2_env = Environment()
     g_rtsps={}
@@ -690,6 +706,9 @@ class MyKernel(Kernel):
                     execfile+=x+" "
                 cmdshstr=self.create_termrunsh(execfile,magics)
                 cmd=[magics['term'],'--',cmdshstr]
+            cstr=''
+            for x in cmd: cstr+=x+" "
+            self._logln(cstr)
             return RealTimeSubprocess(cmd,
                                   self._write_to_stdout,
                                   self._write_to_stderr,
@@ -698,22 +717,7 @@ class MyKernel(Kernel):
             self._write_to_stdout("RealTimeSubprocess err:"+str(e))
             raise
     def create_termrunsh(self,execfile,magics):
-        pausestr='''
-get_char()
-{
-SAVEDSTTY=`stty -g`
-stty -echo
-stty cbreak
-dd if=/dev/tty bs=1 count=1 2> /dev/null
-stty -raw
-stty echo
-stty $SAVEDSTTY
-}
-echo ""
-echo "Press any key to start...or Press Ctrl+c to cancel"
-char=`get_char`
-echo "OK"
-'''
+        pausestr=self.pausestr
         termrunsh="\n"+execfile+"\n"+pausestr+"\n"
         termrunsh_file=self.create_codetemp_file(magics,termrunsh,suffix='.sh')
         newsrcfilename=termrunsh_file.name
@@ -913,7 +917,7 @@ echo "OK"
         # self._logln("The process end:"+str(p.pid))
         # return_code=p.returncode
         if p.returncode != 0:
-            self._log("Executable exited with code {}".format(p.returncode),2)
+            self._logln("Executable exited with code {}".format(p.returncode),2)
         return bcancel_exec,retinfo,magics, code,fil_ename,retstr
     def dor_create_codefile(self,magics,code, silent, store_history=True,
                     user_expressions=None, allow_stdin=True):    
