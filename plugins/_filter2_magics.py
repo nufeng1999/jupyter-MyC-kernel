@@ -74,6 +74,8 @@ class Magics():
                   'classname':'',
                   'cflags': [],
                   'ldflags': [],
+                  'runinterm': '',
+                  'term': 'gnome-terminal',
                   'dlrun': [],
                   'coptions': [],
                   'joptions': [],
@@ -83,6 +85,7 @@ class Magics():
                   'pubclass': '',
                   'runprg': '',
                   'runprgargs': [],
+                  'log': '',
                   'repllistpid': [],
                   'replcmdmode': [],
                   'replprompt': [],
@@ -130,6 +133,8 @@ class Magics():
                     continue
                 elif line.strip()[3:] == "replprompt":
                     magics['replprompt'] += ['replprompt']
+                elif line.strip()[3:] == "runinterm":
+                    magics['runinterm'] = 'true'
                     continue
                 else:
                     #_filter2_magics_i1
@@ -173,6 +178,9 @@ class Magics():
                             self.kobj.send_cmd(pid=pid,cmd=cmd)
                 elif key == "outputtype":
                     magics[key]=value
+                elif key == "log":
+                    magics['log'] = value.strip()
+                    self.kobj._loglevel= value.strip()
                 elif key == "loadurl":
                     url=value
                     if(len(url)>0):
