@@ -10,7 +10,7 @@ from pexpect import replwrap, EOF
 from jinja2 import Environment, PackageLoader, select_autoescape,Template
 from abc import ABCMeta, abstractmethod
 from typing import List, Dict, Tuple, Sequence
-from shutil import copyfile
+from shutil import copyfile,move
 import urllib.request
 import urllib.parse
 from urllib.request import urlopen
@@ -200,6 +200,9 @@ class MyKernel(Kernel):
         self.wAll = True # show all warnings by default
         self.wError = False # but keep comipiling for warnings
         self.files = []
+        self.isdstr=False
+        self.issstr=False
+        self._loglevel='1'
         # mastertemp = tempfile.mkstemp(suffix='.out')
         # os.close(mastertemp[0])
         # self.master_path = mastertemp[1]
@@ -276,6 +279,55 @@ echo "OK"
             li= [i for i in li if i != '']
             env_dict[str(li[0])]=li[1]
         return env_dict
+    usleep = lambda x: time.sleep(x/1000000.0)
+    def addkey2dict(self,magics:Dict,key:str):
+        if not magics.__contains__(key):
+            d={key:[]}
+            magics.update(d)
+        return magics[key]
+    def get_magicsbykey(self,magics:Dict,key:str):
+        return self.addkey2dict(magics,key)
+    def replacemany(self,our_str, to_be_replaced:str, replace_with:str):
+        while (to_be_replaced in our_str):
+            our_str = our_str.replace(to_be_replaced, replace_with)
+        return our_str
+    def _filter_dict(self,argsstr):
+        if not argsstr or len(argsstr.strip())<1:
+            return None
+        env_dict={}
+        argsstr=self.replacemany(self.replacemany(self.replacemany(argsstr.strip(),('  '),' '),('= '),'='),' =','=')
+        pattern = re.compile(r'([^\s*]*)="(.*?)"|([^\s*]*)=(\'.*?\')|([^\s*]*)=(.[^\s]*)')
+        for argument in pattern.findall(argsstr):
+            li=list(argument)
+            li= [i for i in li if i != '']
+            env_dict[str(li[0])]=li[1]
+        return env_dict
+    def _fileshander(self,files:List,srcfilename,magics)->str:
+        index=-1
+        fristfile=srcfilename
+        try:
+            for newsrcfilename in files:
+                index=index+1
+                newsrcfilename = os.path.join(os.path.abspath(''),newsrcfilename)
+                if os.path.exists(newsrcfilename):
+                    if magics!=None and len(self.addkey2dict(magics,'overwritefile'))<1:
+                        newsrcfilename +=".new.py"
+                if not os.path.exists(os.path.dirname(newsrcfilename)) :
+                    os.makedirs(os.path.dirname(newsrcfilename))
+                if index==0:
+                    os.rename(srcfilename,newsrcfilename)
+                    fristfile=newsrcfilename
+                    files[0]=newsrcfilename
+                else:
+                    self._write_to_stdout("copy to :"+newsrcfilename+"\n")
+                    copyfile(fristfile,newsrcfilename)
+        except Exception as e:
+                self._log(str(e),2)
+        return files[0]
+    def _is_specialID(self,line):
+        if line.strip().startswith('##%') or line.strip().startswith('//%'):
+            return True
+        return False
     def _is_test_begin(self,line):
         if line==None or line=='':return ''
         return line.strip().startswith('##test_begin') or line.strip().startswith('//test_begin')
@@ -375,55 +427,6 @@ echo "OK"
             return ''
         line= "" if self.istestcode else line
         return line
-    usleep = lambda x: time.sleep(x/1000000.0)
-    def addkey2dict(self,magics:Dict,key:str):
-        if not magics.__contains__(key):
-            d={key:[]}
-            magics.update(d)
-        return magics[key]
-    def get_magicsbykey(self,magics:Dict,key:str):
-        return self.addkey2dict(magics,key)
-    def replacemany(self,our_str, to_be_replaced:str, replace_with:str):
-        while (to_be_replaced in our_str):
-            our_str = our_str.replace(to_be_replaced, replace_with)
-        return our_str
-    def _filter_dict(self,argsstr):
-        if not argsstr or len(argsstr.strip())<1:
-            return None
-        env_dict={}
-        argsstr=self.replacemany(self.replacemany(self.replacemany(argsstr.strip(),('  '),' '),('= '),'='),' =','=')
-        pattern = re.compile(r'([^\s*]*)="(.*?)"|([^\s*]*)=(\'.*?\')|([^\s*]*)=(.[^\s]*)')
-        for argument in pattern.findall(argsstr):
-            li=list(argument)
-            li= [i for i in li if i != '']
-            env_dict[str(li[0])]=li[1]
-        return env_dict
-    def _fileshander(self,files:List,srcfilename,magics)->str:
-        index=-1
-        fristfile=srcfilename
-        try:
-            for newsrcfilename in files:
-                index=index+1
-                newsrcfilename = os.path.join(os.path.abspath(''),newsrcfilename)
-                if os.path.exists(newsrcfilename):
-                    if magics!=None and len(self.addkey2dict(magics,'overwritefile'))<1:
-                        newsrcfilename +=".new.py"
-                if not os.path.exists(os.path.dirname(newsrcfilename)) :
-                    os.makedirs(os.path.dirname(newsrcfilename))
-                if index==0:
-                    os.rename(srcfilename,newsrcfilename)
-                    fristfile=newsrcfilename
-                    files[0]=newsrcfilename
-                else:
-                    self._write_to_stdout("copy to :"+newsrcfilename+"\n")
-                    copyfile(fristfile,newsrcfilename)
-        except Exception as e:
-                self._log(str(e),2)
-        return files[0]
-    def _is_specialID(self,line):
-        if line.strip().startswith('##%') or line.strip().startswith('//%'):
-            return True
-        return False
     def repl_listpid(self):
         if len(self.g_rtsps)>0: 
             self._write_to_stdout("--------All replpid--------\n")
@@ -466,13 +469,12 @@ echo "OK"
         self.files.append(file.name)
         return file
     def create_codetemp_file(self,magics,code,suffix):
-        source_file=self.new_temp_file(suffix=suffix,dir=os.path.abspath(''))
+        source_file=self.new_temp_file(suffix=suffix,dir=os.path.abspath(''),encoding="UTF-8")
         magics['codefilename']=source_file.name
         with  source_file:
             source_file.write(code)
             source_file.flush()
         return source_file
-    _loglevel='1'
     def _log(self, output,level=1,outputtype='text/plain'):
         if self._loglevel=='0': return
         streamname='stdout'
@@ -511,7 +513,7 @@ echo "OK"
         codelist1=None
         if not os.path.exists(filename):
             return ''
-        with open(os.path.join(os.path.abspath(''),filename), 'r') as codef1:
+        with open(os.path.join(os.path.abspath(''),filename), 'r',encoding="UTF-8") as codef1:
             codelist1 = codef1.readlines()
         if len(codelist1)>0:
             for t in codelist1:

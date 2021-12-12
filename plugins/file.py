@@ -2,7 +2,7 @@ from typing import Dict, Tuple, Sequence,List
 from plugins.ISpecialID import IStag,IDtag,IBtag,ITag
 import re
 import os
-from shutil import copyfile
+from shutil import copyfile,move
 class MyFile(IStag):
     kobj=None
     def getName(self) -> str:
@@ -78,7 +78,7 @@ class MyFile(IStag):
                 if not os.path.exists(os.path.dirname(newsrcfilename)) :
                     os.makedirs(os.path.dirname(newsrcfilename))
                 if index==0:
-                    os.rename(srcfilename,newsrcfilename)
+                    move(srcfilename,newsrcfilename)
                     fristfile=newsrcfilename
                     files[0]=newsrcfilename
                 else:
