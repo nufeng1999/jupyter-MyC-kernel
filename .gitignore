@@ -13,3 +13,4 @@ test*
 *.bak
 *.old
 *old.*
+src/

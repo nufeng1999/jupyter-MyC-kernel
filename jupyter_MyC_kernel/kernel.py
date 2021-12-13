@@ -140,10 +140,10 @@ class RealTimeSubprocess(subprocess.Popen):
             return res
         stderr_contents = read_all_from_queue(self._stderr_queue)
         if stderr_contents:
-            self._write_to_stderr(stderr_contents.decode())
+            self._write_to_stderr(stderr_contents.decode('UTF-8', errors='ignore'))
         stdout_contents = read_all_from_queue(self._stdout_queue)
         if stdout_contents:
-            contents = stdout_contents.decode()
+            contents = stdout_contents.decode('UTF-8', errors='ignore')
             # if there is input request, make output and then
             # ask frontend for input
             start = contents.find(self.__class__.inputRequest)
@@ -1121,13 +1121,15 @@ class CKernel(MyKernel):
         self.linkMaths = True # always link math library
         self.wAll = True # show all warnings by default
         self.wError = False # but keep comipiling for warnings
-    def compile_with_gcc(self, source_filename, binary_filename, cflags=None, ldflags=None,env=None):
+    def compile_with_gcc(self, source_filename, binary_filename, cflags=None, ldflags=None,env=None,magics=None):
         # cflags = ['-std=c89', '-pedantic', '-fPIC', '-shared', '-rdynamic'] + cflags
         # cflags = ['-std=c99', '-Wdeclaration-after-statement', '-Wvla', '-fPIC', '-shared', '-rdynamic'] + cflags
         # cflags = ['-std=iso9899:199409', '-pedantic', '-fPIC', '-shared', '-rdynamic'] + cflags
         # cflags = ['-std=c99', '-pedantic', '-fPIC', '-shared', '-rdynamic'] + cflags
         # cflags = ['-std=c11', '-pedantic', '-fPIC', '-shared', '-rdynamic'] + cflags
         outfile=binary_filename
+        orig_cflags=cflags
+        orig_ldflags=ldflags
         if self.linkMaths:
             cflags = cflags + ['-lm']
         if self.wError:
@@ -1147,7 +1149,11 @@ class CKernel(MyKernel):
                         if outfile.startswith('-'):
                             outfile=binary_filename
                 binary_filename=outfile
-        args = ['gcc', source_filename] + ['-o', binary_filename]+ cflags  + ldflags
+        args=[]
+        if magics!=None and len(self.addkey2dict(magics,'ccompiler'))>0:
+            args = magics['ccompiler'] + orig_cflags +[source_filename] + orig_ldflags
+        else:
+            args = ['gcc', source_filename] + ['-o', binary_filename]+ cflags  + ldflags
         self._log(''.join((' '+ str(s) for s in args))+"\n")
         return self.create_jupyter_subprocess(args,env=env),binary_filename,args
     def _exec_gcc_(self,source_filename,magics):
@@ -1158,14 +1164,15 @@ class CKernel(MyKernel):
                 binary_file.name,
                 self.addkey2dict(magics,'cflags'),
                 self.addkey2dict(magics,'ldflags'),
-                self.addkey2dict(magics,'env'))
+                self.addkey2dict(magics,'env'),
+                magics=magics)
             while p.poll() is None:
                 p.write_contents()
             p.write_contents()
             binary_file.name=os.path.join(os.path.abspath(''),outfile)
             if p.returncode != 0:  # Compilation failed
                 self._log(''.join((str(s) for s in gcccmd))+"\n",3)
-                self._log("GCC exited with code {}, the executable will not be executed".format(p.returncode),3)
+                self._log("C compiler exited with code {}, the executable will not be executed".format(p.returncode),3)
                 # delete source files before exit
                 os.remove(source_filename)
                 os.remove(binary_file.name)
@@ -1246,6 +1253,8 @@ class CKernel(MyKernel):
         retinfo=self.get_retinfo()
         retstr=''
         #FIXME:
+        if len(self.addkey2dict(magics,'execfile'))>0:
+            fil_ename=magics['execfile']
         if magics['runmode']=='repl':
             self._start_replprg(fil_ename,magics['args'],magics)
             return_code=self.replwrapper.child.status
