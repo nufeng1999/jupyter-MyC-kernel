@@ -11,9 +11,10 @@ from jinja2 import Environment, PackageLoader, select_autoescape,Template
 from abc import ABCMeta, abstractmethod
 from typing import List, Dict, Tuple, Sequence
 from shutil import copyfile,move
+from urllib.request import urlopen
 import urllib.request
 import urllib.parse
-from urllib.request import urlopen
+import platform
 import pexpect
 import signal
 import typing 
@@ -199,6 +200,7 @@ class MyKernel(Kernel):
         self.linkMaths = True # always link math library
         self.wAll = True # show all warnings by default
         self.wError = False # but keep comipiling for warnings
+        self.sys = platform.system()
         self.files = []
         self.isdstr=False
         self.issstr=False
@@ -707,7 +709,12 @@ echo "OK"
                 for x in cmd:
                     execfile+=x+" "
                 cmdshstr=self.create_termrunsh(execfile,magics)
-                cmd=[magics['term'],'--',cmdshstr]
+                if self.sys=='Windows':
+                    cmd=magics['term']+[cmdshstr]
+                elif self.sys=='Linux':
+                    cmd=magics['term']+['--',cmdshstr]
+                else:
+                    cmd=magics['term']+['--',cmdshstr]
             cstr=''
             for x in cmd: cstr+=x+" "
             self._logln(cstr)
@@ -719,11 +726,20 @@ echo "OK"
             self._write_to_stdout("RealTimeSubprocess err:"+str(e))
             raise
     def create_termrunsh(self,execfile,magics):
-        pausestr=self.pausestr
-        termrunsh="\n"+execfile+"\n"+pausestr+"\n"
-        termrunsh_file=self.create_codetemp_file(magics,termrunsh,suffix='.sh')
-        newsrcfilename=termrunsh_file.name
-        fil_ename=newsrcfilename
+        fil_ename=execfile
+        if self.sys=='Windows':
+            termrunsh="echo off\r\ncls\r\n"+execfile+"\r\npause\r\nexit\r\n"
+            termrunsh_file=self.create_codetemp_file(magics,termrunsh,suffix='.bat')
+            newsrcfilename=termrunsh_file.name
+            fil_ename=newsrcfilename
+        elif self.sys=='Linux':
+            pausestr=self.pausestr
+            termrunsh="\n"+execfile+"\n"+pausestr+"\n"
+            termrunsh_file=self.create_codetemp_file(magics,termrunsh,suffix='.sh')
+            newsrcfilename=termrunsh_file.name
+            fil_ename=newsrcfilename
+        else:
+            pass
         self._logln(fil_ename)
         os.chmod(newsrcfilename,stat.S_IRWXU+stat.S_IRGRP+stat.S_IXGRP+stat.S_IXOTH)
         return fil_ename

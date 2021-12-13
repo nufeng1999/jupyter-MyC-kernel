@@ -176,6 +176,10 @@ class Magics():
                             pid=findObj[0]
                             cmd=findObj[1]
                             self.kobj.send_cmd(pid=pid,cmd=cmd)
+                elif key == "term":
+                    magics['term']=[]
+                    for argument in re.findall(r'(?:[^\s,"]|"(?:\\.|[^"])*")+', value):
+                        magics['term'] += [argument.strip('"')]
                 elif key == "outputtype":
                     magics[key]=value
                 elif key == "log":
