@@ -676,23 +676,6 @@ echo "OK"
         else:
             self._write_to_stdout("[MyPythonkernel] Info:MyPythonKernel command success.")
         return
-    def do_flutter_command(self,commands=None,cwd=None,magics=None):
-        p = self.create_jupyter_subprocess(['flutter']+commands,cwd=os.path.abspath(''),shell=False)
-        self.g_rtsps[str(p.pid)]=p
-        if magics!=None and len(magics['showpid'])>0:
-            self._write_to_stdout("The process PID:"+str(p.pid)+"\n")
-        while p.poll() is None:
-            p.write_contents()
-        # wait for threads to finish, so output is always shown
-        p._stdout_thread.join()
-        p._stderr_thread.join()
-        del self.g_rtsps[str(p.pid)]
-        p.write_contents()
-        if p.returncode != 0:
-            self._write_to_stderr("[MyPythonkernel] Executable exited with code {}".format(p.returncode))
-        else:
-            self._write_to_stdout("[MyPythonkernel] Info:flutter command success.")
-        return
     def send_cmd(self,pid,cmd):
         try:
             # self._write_to_stdout("send cmd PID:"+pid+"\n cmd:"+cmd)
@@ -705,6 +688,8 @@ echo "OK"
         return
     def create_jupyter_subprocess(self, cmd,cwd=None,shell=False,env=None,magics=None):
         try:
+            if env==None or len(env)<1:
+                env=os.environ
             if magics!=None and len(magics['runinterm'])>0 and len(magics['term'])>0:
                 execfile=''
                 for x in cmd:
