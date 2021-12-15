@@ -240,22 +240,22 @@ echo "OK"
         retinfo={'status': 'ok', 'execution_count': self.execution_count, 'payload': [], 'user_expressions': {}}
         return retinfo
     def chkjoptions(self,magics,jarfile,targetdir):
-        if len(self.addkey2dict(magics,'joptions'))>-1:
+        if len(self.addmagicsSkey(magics,'joptions'))>-1:
             index=-1
             try:
-                index=magics['joptions'].index('-cp')
+                index=self.addmagicsSkey(magics,'joptions').index('-cp')
             except Exception as e:
                 pass
             if(index<0):
-                magics['joptions']+=['-cp']
-                magics['joptions']+=[':']
+                magics['st']['joptions']+=['-cp']
+                magics['st']['joptions']+=[':']
                 index=index+1
-            cpstr=magics['joptions'][index+1]
+            cpstr=magics['st']['joptions'][index+1]
             cpstr=cpstr+":"+jarfile+":"+targetdir
             if cpstr.strip().startswith(':'):
                 cpstr=cpstr[1:] 
             # self._log(cpstr)
-            magics['joptions'][index+1]=cpstr
+            magics['st']['joptions'][index+1]=cpstr
     def resolving_enveqval(self, envstr):
         if envstr is None or len(envstr.strip())<1:
             return os.environ
@@ -283,6 +283,22 @@ echo "OK"
             li= [i for i in li if i != '']
             env_dict[str(li[0])]=li[1]
         return env_dict
+    def get_magicsSvalue(self,magics:Dict,key:str):
+        return self.addmagicsSkey(magics,key)
+    def addmagicsSkey(self,magics:Dict,key:str,func=None):
+        return self.addmagicskey2(magics=magics,key=key,type='st',func=func)
+    def addmagicsBkey(self,magics:Dict,key:str,func=None):
+        return self.addmagicskey2(magics=magics,key=key,type='bt',func=func)
+    def addmagicskey2(self,magics:Dict,key:str,type:str,func=None):
+        if not magics[type].__contains__(key):
+            d={key:[]}
+            magics[type].update(d)
+        if not magics[type+'f'].__contains__(key):
+            d={key:[]}
+            magics[type+'f'].update(d)
+        if func!=None:
+            magics[type+'f'][key]+=[func]
+        return magics[type][key]
     usleep = lambda x: time.sleep(x/1000000.0)
     def addkey2dict(self,magics:Dict,key:str):
         if not magics.__contains__(key):
@@ -431,7 +447,7 @@ echo "OK"
             return ''
         line= "" if self.istestcode else line
         return line
-    def repl_listpid(self):
+    def repl_listpid(self,cmd=None):
         if len(self.g_rtsps)>0: 
             self._write_to_stdout("--------All replpid--------\n")
             for key in self.g_rtsps:
@@ -504,8 +520,8 @@ echo "OK"
     def _write_display_data(self,mimetype='text/html',contents=""):
         self.send_response(self.iopub_socket, 'display_data', {'data': {mimetype:contents}, 'metadata': {mimetype:{}}})
     def _write_to_stdout(self,contents,magics=None):
-        if magics !=None and len(magics['outputtype'])>0:
-            self._write_display_data(mimetype=magics['outputtype'],contents=contents)
+        if magics !=None and len(magics['st']['outputtype'])>0:
+            self._write_display_data(mimetype=magics['st']['outputtype'],contents=contents)
         else:
             self.send_response(self.iopub_socket, 'stream', {'name': 'stdout', 'text': contents})
     def _write_to_stderr(self, contents):
@@ -553,7 +569,7 @@ echo "OK"
                                     self._write_to_stderr,
                                     self._read_from_stdin,
                                     child,
-                                    replsetip=magics['replsetip'],
+                                    replsetip=magics['st']['replsetip'],
                                     orig_prompt='\r\n', 
                                     prompt_change=None,
                                     extra_init_cmd=None,
@@ -566,8 +582,8 @@ echo "OK"
             signal.signal(signal.SIGINT, sig)
     def process_output(self, output,magics=None):
         if not self.silent:
-            if magics !=None and len(magics['outputtype'])>0:
-                self._write_display_data(mimetype=magics['outputtype'],contents=output)
+            if magics !=None and len(magics['st']['outputtype'])>0:
+                self._write_display_data(mimetype=magics['st']['outputtype'],contents=output)
                 return
             # Send standard output
             stream_content = {'name': 'stdout', 'text': output}
@@ -586,11 +602,11 @@ echo "OK"
             # already sent by IREPLWrapper.
             self._write_to_stdout("send replcmd:"+code.rstrip()+"\n")
             self._write_to_stdout("---Received information after send repl cmd---\n")
-            if magics and len(magics['replchildpid'])>0 :
-                if self.g_rtsps[magics['replchildpid']] and \
-                    self.g_rtsps[magics['replchildpid']].child and \
-                    not self.g_rtsps[magics['replchildpid']].child.terminated :
-                    self.g_rtsps[magics['replchildpid']].run_command(code.rstrip(), timeout=None)
+            if magics and len(magics['st']['replchildpid'])>0 :
+                if self.g_rtsps[magics['st']['replchildpid']] and \
+                    self.g_rtsps[magics['st']['replchildpid']].child and \
+                    not self.g_rtsps[magics['st']['replchildpid']].child.terminated :
+                    self.g_rtsps[magics['st']['replchildpid']].run_command(code.rstrip(), timeout=None)
             else:
                 if self.replwrapper and \
                     self.replwrapper.child and \
@@ -691,20 +707,20 @@ echo "OK"
         try:
             if env==None or len(env)<1:
                 env=os.environ
-            if magics!=None and len(magics['runinterm'])>0:
+            if magics!=None and len(self.addmagicsBkey(magics,'runinterm'))>0:
                 self.inittermcmd(magics)
-                if len(magics['term'])<1:
+                if len(magics['st']['term'])<1:
                     self._logln("no term！",2)
                 execfile=''
                 for x in cmd:
                     execfile+=x+" "
                 cmdshstr=self.create_termrunsh(execfile,magics)
                 if self.sys=='Windows':
-                    cmd=magics['term']+[cmdshstr]
+                    cmd=magics['st']['term']+[cmdshstr]
                 elif self.sys=='Linux':
-                    cmd=magics['term']+['--',cmdshstr]
+                    cmd=magics['st']['term']+['--',cmdshstr]
                 else:
-                    cmd=magics['term']+['--',cmdshstr]
+                    cmd=magics['st']['term']+['--',cmdshstr]
             cstr=''
             for x in cmd: cstr+=x+" "
             self._logln(cstr)
@@ -724,7 +740,7 @@ echo "OK"
             self._logln(""+str(e),3)
         return uname
     def inittermcmd(self,magics):
-        if len(magics['term'])>0:return ''
+        if len(magics['st']['term'])>0:return ''
         termcmd=''
         try:
             if self.subsys.startswith('MINGW64') or self.subsys.startswith('CYGWIN'):
@@ -734,9 +750,9 @@ echo "OK"
         except Exception as e:
             self._logln(""+str(e),3)
         if len(termcmd)>1:
-            magics['term']=[]
+            magics['st']['term']=[]
             for argument in re.findall(r'(?:[^\s,"]|"(?:\\.|[^"])*")+', termcmd):
-                magics['term'] += [argument.strip('"')]
+                magics['st']['term'] += [argument.strip('"')]
         return termcmd
     def create_termrunsh(self,execfile,magics):
         fil_ename=execfile
@@ -771,7 +787,7 @@ echo "OK"
         x = re.search(r".*\s+main\s*\(", tmpCode)
         if not x:
             code = self.main_head + code + self.main_foot
-            # magics['cflags'] += ['-lm']
+            # magics['st']['cflags'] += ['-lm']
         return magics, code
     def raise_plugin(self,code,magics,returncode=None,filename='',ifunc=1,ieven=1)->Tuple[bool,str]:
         bcancel_exec=False
@@ -933,28 +949,17 @@ echo "OK"
         except Exception as e:
             self._log(""+str(e),3)
         return self.get_retinfo()
-    def dor_runcode(self,return_code,fil_ename,magics,code, silent, store_history=True,
+    def dor_create_codefile(self,magics,code, silent, store_history=True,
                     user_expressions=None, allow_stdin=True):    
-        return_code=return_code
-        fil_ename=fil_ename
+        return_code=0
+        fil_ename=''
         bcancel_exec=False
         retinfo=self.get_retinfo()
         retstr=''
-        runprg=self.get_magicsbykey(magics,'runprg')
-        runprgargs=self.get_magicsbykey(magics,'runprgargs')
-        if (len(runprgargs)<1):
-            self._logln("No label runprgargs!",2)
-        p = self.create_jupyter_subprocess([runprg]+ runprgargs,cwd=None,shell=False,env=self.addkey2dict(magics,'env'))
-        self.g_rtsps[str(p.pid)]=p
-        return_code=p.returncode
-        bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,3,2)
-        if len(self.addkey2dict(magics,'showpid'))>0:
-            self._logln("The process PID:"+str(p.pid))
-        return_code=p.wait_end(magics)
-        # self._logln("The process end:"+str(p.pid))
-        # return_code=p.returncode
-        if p.returncode != 0:
-            self._logln("Executable exited with code {}".format(p.returncode),2)
+        source_file=self.create_codetemp_file(magics,code,suffix='.sh')
+        newsrcfilename=source_file.name
+        fil_ename=newsrcfilename
+        return_code=True
         return bcancel_exec,retinfo,magics, code,fil_ename,retstr
     def dor_create_codefile(self,magics,code, silent, store_history=True,
                     user_expressions=None, allow_stdin=True):    
@@ -968,20 +973,27 @@ echo "OK"
         fil_ename=newsrcfilename
         return_code=True
         return bcancel_exec,retinfo,magics, code,fil_ename,retstr
-    def dor_preexecute(self,code,magics,silent, store_history=True,
-                user_expressions=None, allow_stdin=False):        
+    def dor_create_codefile(self,magics,code, silent, store_history=True,
+                    user_expressions=None, allow_stdin=True):    
+        return_code=0
+        fil_ename=''
         bcancel_exec=False
         retinfo=self.get_retinfo()
-        return bcancel_exec,retinfo,magics, code
+        retstr=''
+        source_file=self.create_codetemp_file(magics,code,suffix='.sh')
+        newsrcfilename=source_file.name
+        fil_ename=newsrcfilename
+        return_code=True
+        return bcancel_exec,retinfo,magics, code,fil_ename,retstr
     def do_execute(self, code, silent, store_history=True,
                    user_expressions=None, allow_stdin=True):
         self.silent = silent
         retinfo=self.get_retinfo()
         magics, code = self.mag.filter(code)
-        if (len(self.addkey2dict(magics,'onlyrunmagics'))>0 or len(self.addkey2dict(magics,'onlyruncmd'))>0):
+        if (len(self.addmagicsBkey(magics,'onlyrunmagics'))>0 or len(self.addkey2dict(magics,'onlyruncmd'))>0):
             bcancel_exec=True
             return retinfo
-        if len(self.addkey2dict(magics,'replcmdmode'))>0:
+        if len(self.addmagicsBkey(magics,'replcmdmode'))>0:
             bcancel_exec=True
             retinfo= self.send_replcmd(code, silent, store_history,user_expressions, allow_stdin)
             return retinfo
@@ -1197,9 +1209,9 @@ class CKernel(MyKernel):
             p,outfile,gcccmd = self.compile_with_gcc(
                 source_filename, 
                 binary_file.name,
-                self.addkey2dict(magics,'cflags'),
-                self.addkey2dict(magics,'ldflags'),
-                self.addkey2dict(magics,'env'),
+                self.get_magicsSvalue(magics,'cflags'),
+                self.get_magicsSvalue(magics,'ldflags'),
+                self.get_magicsbykey(magics,'env'),
                 magics=magics)
             while p.poll() is None:
                 p.write_contents()
@@ -1298,17 +1310,17 @@ class CKernel(MyKernel):
         #FIXME:
         if len(self.addkey2dict(magics,'execfile'))>0:
             fil_ename=magics['execfile']
-        if magics['runmode']=='repl':
-            self._start_replprg(fil_ename,magics['args'],magics)
+        if magics['st']['runmode']=='repl':
+            self._start_replprg(fil_ename,magics['st']['args'],magics)
             return_code=self.replwrapper.child.status
             bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,3,2)
             return bcancel_exec,retinfo,magics, code,fil_ename,retstr
         p=None
         #FIXME:
         if len(magics['dlrun'])>0:
-            p = self.create_jupyter_subprocess([self.master_path, fil_ename] + magics['args'],env=self.addkey2dict(magics,'env'),magics=magics)
+            p = self.create_jupyter_subprocess([self.master_path, fil_ename] + magics['st']['args'],env=self.addkey2dict(magics,'env'),magics=magics)
         else:
-            p = self.create_jupyter_subprocess([fil_ename] + magics['args'],env=self.addkey2dict(magics,'env'),magics=magics)
+            p = self.create_jupyter_subprocess([fil_ename] + magics['st']['args'],env=self.addkey2dict(magics,'env'),magics=magics)
         self.subprocess=p
         self.g_rtsps[str(p.pid)]=p
         return_code=p.returncode
@@ -1362,7 +1374,7 @@ class CKernel(MyKernel):
             retinfo= self.replgdb_sendcmd(code,silent, store_history,
                 user_expressions, allow_stdin)
             return bcancel_exec,retinfo,magics, code
-        if magics['runmode']=='repl':
+        if magics['st']['runmode']=='repl':
             if hasattr(self, 'replcmdwrapper'):
                 if self.replcmdwrapper :
                     bcancel_exec=True

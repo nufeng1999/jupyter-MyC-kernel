@@ -25,7 +25,7 @@ class MyNoruncode(IBtag):
     def on_IBpCodescanning(self,magics,line) -> str:
         # self.kobj._write_to_stdout(line+" on_ISpCodescanning\n")
         self.kobj.addkey2dict(magics,'noruncode')
-        magics['noruncode'] += ['true']
+        magics['noruncode'] = ['true']
         return ''
     def on_Codescanning(self,magics,code)->Tuple[bool,str]:
         pass

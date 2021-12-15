@@ -57,6 +57,7 @@ class MyFile(IStag):
     def on_after_exec(self,returncode,srcfile,magics)->bool:
         return False
     def on_after_completion(self,returncode,execfile,magics)->bool:
+        magics['file']=[]
         return False
     def filehander(self,key, value,magics,line):
         self.kobj._write_to_stdout(value+"\n")
