@@ -75,7 +75,7 @@ class Magics():
                   'cflags': [],
                   'ldflags': [],
                   'runinterm': '',
-                  'term': 'gnome-terminal',
+                  'term': [],
                   'dlrun': [],
                   'coptions': [],
                   'joptions': [],
