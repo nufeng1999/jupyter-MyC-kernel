@@ -41,80 +41,72 @@ class Magics():
         self.IDplugins=self.plugins[1]
         self.IBplugins=self.plugins[2]
         self.magics = {
-                  'bt':{
-                    'repllistpid':'',
-                    'onlyrunmagics':'',
-                    'runinterm':'',
-                    'replcmdmode':'',
-                    'replprompt':''
-                    },
-                  'st':{
-                    'ldflags':[],
-                    'cflags':[],
-                    'coptions':[],
-                    'joptions':[],
-                    'runmode':[],
-                    'replsetip':[],
-                    'replchildpid':"0",
-                    'pidcmd':[],
-                    'term':[],
-                    'outputtype':'text/plain',
-                    'log':[],
-                    'loadurl':[],
-                    'runprg':[],
-                    'runprgargs':[],
-                    'args':[]
-                    },
-                  'dt':{},
-                  'btf':{
-                    'repllistpid':[self.kobj.repl_listpid],
-                    'onlyrunmagics':[],
-                    'runinterm':[],
-                    'replcmdmode':[],
-                    'replprompt':[]
-                    },
-                  'stf':{
-                    'ldflags':[],
-                    'cflags':[],
-                    'coptions':[],
-                    'joptions':[],
-                    'runmode':[],
-                    'replsetip':[],
-                    'replchildpid':[],
-                    'pidcmd':[],
-                    'term':[],
-                    'outputtype':[],
-                    'log':[],
-                    'loadurl':[],
-                    'runprg':[],
-                    'runprgargs':[],
-                    'args':[]
-                    },
-                  'dtf':{},
-                  'codefilename':'',
-                  'classname':'',
-                #   'cflags': [],
-                #   'ldflags': [],
-                #   'term': [],
-                  'dlrun': [],
-                #   'coptions': [],
-                #   'joptions': [],
-                  'package': '',
-                  'main': '',
-                  'pubclass': '',
-                #   'runprg': '',
-                #   'runprgargs': [],
-                #   'log': '',
-                #   'repllistpid': [],
-                #   'replsetip': "\r\n",
-                #   'replchildpid':"0",
-                #   'outputtype':'text/plain',
-                #   'runmode': [],
-                  'pid': [],
-                #   'pidcmd': [],
-                #   'args': [],
-                #   'rungdb': []
-                  }
+                '_sline':{
+                  'package':'0',
+                  'public':'0'
+                },
+                '_slinef':{
+                  'package':[],
+                  'public':[]
+                },
+                '_bt':{
+                'repllistpid':'',
+                'onlyrunmagics':'',
+                'runinterm':'',
+                'replcmdmode':'',
+                'replprompt':''
+                },
+                '_st':{
+                'ldflags':[],
+                'cflags':[],
+                'coptions':[],
+                'joptions':[],
+                'runmode':[],
+                'replsetip':[],
+                'replchildpid':"0",
+                'pidcmd':[],
+                'term':[],
+                'outputtype':'text/plain',
+                'log':[],
+                'loadurl':[],
+                'runprg':[],
+                'runprgargs':[],
+                'args':[]
+                },
+                '_dt':{},
+                '_btf':{
+                'repllistpid':[self.kobj.repl_listpid],
+                'onlyrunmagics':[],
+                'runinterm':[],
+                'replcmdmode':[],
+                'replprompt':[]
+                },
+                '_stf':{
+                'ldflags':[],
+                'cflags':[],
+                'coptions':[],
+                'joptions':[],
+                'runmode':[],
+                'replsetip':[],
+                'replchildpid':[],
+                'pidcmd':[],
+                'term':[],
+                'outputtype':[],
+                'log':[],
+                'loadurl':[],
+                'runprg':[],
+                'runprgargs':[],
+                'args':[]
+                },
+                '_dtf':{},
+                'codefilename':'',
+                'classname':'',
+                'dlrun': [],
+                'package': '',
+                'main': '',
+                'pubclass': '',
+                'pid': []
+            }
         self.init_filter(self.magics)
     def _is_specialID(self,line):
         if line.strip().startswith('##%') or line.strip().startswith('//%'):
@@ -127,13 +119,17 @@ class Magics():
         return magics[key]
     def get_magicsSvalue(self,magics:Dict,key:str):
         return self.addmagicsSkey(magics,key)
+    def addmagicsSLkey(self,magics:Dict,key:str,value=None,func=None):
+        return self.addmagicskey2(magics=magics,key=key,type='_sline',func=func,value=value)
     def addmagicsSkey(self,magics:Dict,key:str,func=None):
-        return self.addmagicskey2(magics=magics,key=key,type='st',func=func)
-    def addmagicsBkey(self,magics:Dict,key:str,func=None):
-        return self.addmagicskey2(magics=magics,key=key,type='bt',func=func)
-    def addmagicskey2(self,magics:Dict,key:str,type:str,func=None):
+        return self.addmagicskey2(magics=magics,key=key,type='_st',func=func)
+    def addmagicsBkey(self,magics:Dict,key:str,value=None,func=None):
+        return self.addmagicskey2(magics=magics,key=key,type='_bt',func=func,value=value)
+    def addmagicskey2(self,magics:Dict,key:str,type:str,func=None,value=None):
         if not magics[type].__contains__(key):
             d={key:[]}
+            if value!=None:
+                d={key:value}
             magics[type].update(d)
         if not magics[type+'f'].__contains__(key):
             d={key:[]}
@@ -141,37 +137,55 @@ class Magics():
         if func!=None:
             magics[type+'f'][key]+=[func]
         return magics[type][key]
+    def slfn_package(self,key,magics,line):
+        qline=self.kobj.replacemany(line,'; ', ';')
+        qline=self.kobj.replacemany(qline,' ;', ';')
+        qline= qline[:len(qline)-1]
+        li=qline.strip().split()
+        if(len(li)>1):
+            magics['package'] = li[1].strip()
+        return ''
+    def slfn_public(self,key,magics,line):
+        qline = self.kobj.replacemany(line, 's  ', 's ')
+        li = qline.strip().split()
+        if(len(li) > 2 and li[1].strip().lower() == 'class'):
+            magics[li[0].strip()] = li[1].strip()
+            pubclass = li[2].strip()
+            if pubclass.strip().endswith('{'):
+                pubclass = pubclass[:len(pubclass)-1]
+            magics['pubclass'] = pubclass
+        return ''
     def kfn_ldflags(self,key,value,magics,line):
         for flag in value.split():
-            magics[key] += [flag]
+            magics['_st'][key] += [flag]
         return ''
     def kfn_cflags(self,key,value,magics,line):
         for flag in value.split():
-            magics[key] += [flag]
+            magics['_st'][key] += [flag]
         return ''
     def kfn_coptions(self,key,value,magics,line):
         for flag in value.split():
-            magics[key] += [flag]
+            magics['_st'][key] += [flag]
         return ''
     def kfn_joptions(self,key,value,magics,line):
         for flag in value.split():
-            magics[key] += [flag]
+            magics['_st'][key] += [flag]
         return ''
     def kfn_runmode(self,key,value,magics,line):
         if len(value)>0:
-            magics[key] = value[re.search(r'[^/]',value).start():]
+            magics['_st'][key] = value[re.search(r'[^/]',value).start():]
         else:
-            magics[key] ='real'
+            magics['_st'][key] ='real'
         return ''
     def kfn_replsetip(self,key,value,magics,line):
-        magics['replsetip'] = value
+        magics['_st']['replsetip'] = value
         return ''
     def kfn_replchildpid(self,key,value,magics,line):
-        magics['replchildpid'] = value
+        magics['_st']['replchildpid'] = value
         return ''
     def kfn_pidcmd(self,key,value,magics,line):
-        magics['pidcmd'] = [value]
-        if len(magics['pidcmd'])>0:
+        magics['_st']['pidcmd'] = [value]
+        if len(magics['_st']['pidcmd'])>0:
             findObj= value.split(",",1)
         if findObj and len(findObj)>1:
             pid=findObj[0]
@@ -179,15 +193,15 @@ class Magics():
             self.kobj.send_cmd(pid=pid,cmd=cmd)
         return ''
     def kfn_term(self,key,value,magics,line):
-        magics['term']=[]
+        magics['_st']['term']=[]
         for argument in re.findall(r'(?:[^\s,"]|"(?:\\.|[^"])*")+', value):
-            magics['term'] += [argument.strip('"')]
+            magics['_st']['term'] += [argument.strip('"')]
         return ''
     def kfn_outputtype(self,key,value,magics,line):
         magics[key]=value
         return ''
     def kfn_log(self,key,value,magics,line):
-        magics['log'] = value.strip()
+        magics['_st']['log'] = value.strip()
         self.kobj._loglevel= value.strip()
         return ''
     def kfn_loadurl(self,key,value,magics,line):
@@ -197,17 +211,19 @@ class Magics():
             return line
         return ''
     def kfn_runprg(self,key,value,magics,line):
-        magics['runprg'] = value
+        magics['_st']['runprg'] = value
         return ''
     def kfn_runprgargs(self,key,value,magics,line):
         for argument in re.findall(r'(?:[^\s,"]|"(?:\\.|[^"])*")+', value):
-            magics['runprgargs'] += [argument.strip('"')]
+            magics['_st']['runprgargs'] += [argument.strip('"')]
         return ''
     def kfn_args(self,key,value,magics,line):
         for argument in re.findall(r'(?:[^\s,"]|"(?:\\.|[^"])*")+', value):
-            magics['args'] += [argument.strip('"')]
+            magics['_st']['args'] += [argument.strip('"')]
         return ''
     def init_filter(self,magics):
+        self.addmagicsSLkey(magics,'package','0',self.slfn_package)
+        self.addmagicsSLkey(magics,'public','0',self.slfn_public)
         self.addmagicsSkey(magics,'ldflags',self.kfn_ldflags)
         self.addmagicsSkey(magics,'cflags',self.kfn_cflags)
         self.addmagicsSkey(magics,'coptions',self.kfn_coptions)
@@ -225,90 +241,131 @@ class Magics():
         self.addmagicsSkey(magics,'args',self.kfn_args)
     def reset_filter(self):
         self.magics = {
-                  'bt':{
-                    'repllistpid':'',
-                    'onlyrunmagics':'',
-                    'runinterm':'',
-                    'replcmdmode':'',
-                    'replprompt':''
-                    },
-                  'st':{
-                    'ldflags':[],
-                    'cflags':[],
-                    'coptions':[],
-                    'joptions':[],
-                    'runmode':[],
-                    'replsetip':[],
-                    'replchildpid':"0",
-                    'pidcmd':[],
-                    'term':[],
-                    'outputtype':'text/plain',
-                    'log':[],
-                    'loadurl':[],
-                    'runprg':[],
-                    'runprgargs':[],
-                    'args':[]
-                    },
-                  'dt':{},
-                  'btf':{
-                    'repllistpid':[self.kobj.repl_listpid],
-                    'onlyrunmagics':[],
-                    'runinterm':[],
-                    'replcmdmode':[],
-                    'replprompt':[]
-                    },
-                  'stf':{
-                    'ldflags':[],
-                    'cflags':[],
-                    'coptions':[],
-                    'joptions':[],
-                    'runmode':[],
-                    'replsetip':[],
-                    'replchildpid':[],
-                    'pidcmd':[],
-                    'term':[],
-                    'outputtype':[],
-                    'log':[],
-                    'loadurl':[],
-                    'runprg':[],
-                    'runprgargs':[],
-                    'args':[]
-                    },
-                  'dtf':{},
-                  'codefilename':'',
-                  'classname':'',
-                  'dlrun': [],
-                  'package': '',
-                  'main': '',
-                  'pubclass': '',
-                  'pid': []
-                  }
+                '_sline':{
+                  'package':'0',
+                  'public':'0'
+                },
+                '_slinef':{
+                  'package':[],
+                  'public':[]
+                },
+                '_bt':{
+                'repllistpid':'',
+                'onlyrunmagics':'',
+                'runinterm':'',
+                'replcmdmode':'',
+                'replprompt':''
+                },
+                '_st':{
+                'ldflags':[],
+                'cflags':[],
+                'coptions':[],
+                'joptions':[],
+                'runmode':[],
+                'replsetip':[],
+                'replchildpid':"0",
+                'pidcmd':[],
+                'term':[],
+                'outputtype':'text/plain',
+                'log':[],
+                'loadurl':[],
+                'runprg':[],
+                'runprgargs':[],
+                'args':[]
+                },
+                '_dt':{},
+                '_btf':{
+                'repllistpid':[self.kobj.repl_listpid],
+                'onlyrunmagics':[],
+                'runinterm':[],
+                'replcmdmode':[],
+                'replprompt':[]
+                },
+                '_stf':{
+                'ldflags':[],
+                'cflags':[],
+                'coptions':[],
+                'joptions':[],
+                'runmode':[],
+                'replsetip':[],
+                'replchildpid':[],
+                'pidcmd':[],
+                'term':[],
+                'outputtype':[],
+                'log':[],
+                'loadurl':[],
+                'runprg':[],
+                'runprgargs':[],
+                'args':[]
+                },
+                '_dtf':{},
+                'codefilename':'',
+                'classname':'',
+                'dlrun': [],
+                'package': '',
+                'main': '',
+                'pubclass': '',
+                'pid': []
+            }
+    def call_slproc(self,magics,line)->Tuple[bool,str]:
+        type='_sline'
+        if len(magics[type])<1:return False,line
+        newline=line
+        ismatch=False
+        try:
+            for key,value in magics[type].items():
+                if (len(value)>0 and value.strip()=='0' 
+                    and (line.strip().startswith(key))
+                    and len(magics[type+'f'][key])>0):
+                    ismatch=True
+                    for kfunc in magics[type+'f'][key]:
+                        newline=kfunc(key,magics,newline)
+                elif (len(value)>0 and value.strip()=='1' 
+                    and (key in line.strip())
+                    and len(magics[type+'f'][key])>0):
+                    ismatch=True
+                    for kfunc in magics[type+'f'][key]:
+                        newline=kfunc(key,magics,newline)
+                elif (len(value)>0 and value.strip()=='2' 
+                    and (line.strip().endswith(key))
+                    and len(magics[type+'f'][key])>0):
+                    ismatch=True
+                    for kfunc in magics[type+'f'][key]:
+                        newline=kfunc(key,magics,newline)
+                if ismatch:
+                    return ismatch,newline
+        except Exception as e:
+            self.kobj._logln("call_slproc "+str(e),3)
+        finally:pass
+        return ismatch,newline
     def call_btproc(self,magics,line)->bool:
-        if len(magics['bt'])<1:return False
+        type='_bt'
+        if len(magics[type])<1:return False
         try:
             key= line.strip()[3:]
-            if magics['bt'].__contains__(key):
-                magics['bt'][key]='true'
+            if magics[type].__contains__(key):
+                magics[type][key]='true'
                 if len(magics[type+'f'][key])>0:
                     for kfunc in magics[type+'f'][key]:
                         kfunc(line)
                 return True
         except Exception as e:
-            self.kobj._logln(str(e))
+            self.kobj._logln('call_btproc '+str(e),3)
         finally:pass
         return False
     def call_stproc(self,magics,line,key,value)->str:
-        if len(magics['st'])<1:return line
+        type='_st'
+        if len(magics[type])<1:return line
         newline=line
         try:
-            if magics['st'].__contains__(key):
-                if len(magics['stf'][key])>0:
-                    for kfunc in magics['stf'][key]:
+            if magics[type].__contains__(key):
+                if len(magics[type+'f'][key])>0:
+                    for kfunc in magics[type+'f'][key]:
                         # self.kobj._logln("call--------"+key)
                         newline=kfunc(key,value,magics,newline)
                 return newline
         except Exception as e:
-            self.kobj._logln("call_stproc "+str(e))
+            self.kobj._logln("call_stproc "+str(e),3)
         finally:pass
         return newline
     def raise_ICodescan(self,magics,code)->Tuple[bool,str]:
@@ -337,43 +394,15 @@ class Magics():
         for line in code.splitlines():
             orgline=line
             if line==None or line.strip()=='': continue
-            if line.strip().startswith('package'):
-                qline=self.kobj.replacemany(line,'; ', ';')
-                qline=self.kobj.replacemany(qline,' ;', ';')
-                qline= qline[:len(qline)-1]
-                li=qline.strip().split()
-                if(len(li)>1):
-                    magics[li[0].strip()] = li[1].strip()
-                actualCode += line + '\n'
-                continue
-            if line.strip().startswith('public'):
-                qline = self.kobj.replacemany(line, 's  ', 's ')
-                li = qline.strip().split()
-                if(len(li) > 2 and li[1].strip() == 'class'):
-                    magics[li[0].strip()] = li[1].strip()
-                    pubclass = li[2].strip()
-                    if pubclass.strip().endswith('{'):
-                        pubclass = pubclass[:len(pubclass)-1]
-                    magics['pubclass'] = pubclass
-                actualCode += line + '\n'
+            ismatch,retstr=self.call_slproc(magics,line)
+            if ismatch:
+                if len(retstr)>0:
+                    actualCode += retstr + '\n'
+                else:
+                    actualCode += line + '\n'
                 continue
             if self._is_specialID(line):
                 if self.call_btproc(magics,line):continue
-                # if line.strip()[3:] == "repllistpid":
-                #     magics['repllistpid'] += ['true']
-                #     self.kobj.repl_listpid('')
-                #     continue
-                # elif line.strip()[3:] == "onlyrunmagics":
-                #     magics['onlyrunmagics'] = 'true'
-                #     continue
-                # elif line.strip()[3:] == "runinterm":
-                #     magics['runinterm'] = 'true'
-                #     continue
-                # elif line.strip()[3:] == "replcmdmode":
-                #     magics['replcmdmode'] = 'true'
-                #     continue
-                # elif line.strip()[3:] == "replprompt":
-                #     magics['replprompt'] += ['replprompt']
                 else:
                     #_filter2_magics_i1
                     for pkey,pvalue in self.IBplugins.items():
@@ -398,54 +427,6 @@ class Magics():
                 if newline!=line and len(newline)>0:
                     actualCode += newline + '\n'
                     continue
-                # else:
-                #     actualCode += newline + '\n'
-                # if key in ['ldflags', 'cflags','coptions','joptions']:
-                #     for flag in value.split():
-                #         magics[key] += [flag]
-                # elif key == "runmode":
-                #     if len(value)>0:
-                #         magics[key] = value[re.search(r'[^/]',value).start():]
-                #     else:
-                #         magics[key] ='real'
-                # elif key == "replsetip":
-                #     magics['replsetip'] = value
-                # elif key == "replchildpid":
-                #     magics['replchildpid'] = value
-                # elif key == "pidcmd":
-                #     magics['pidcmd'] = [value]
-                #     if len(magics['pidcmd'])>0:
-                #         findObj= value.split(",",1)
-                #         if findObj and len(findObj)>1:
-                #             pid=findObj[0]
-                #             cmd=findObj[1]
-                #             self.kobj.send_cmd(pid=pid,cmd=cmd)
-                # elif key == "term":
-                #     magics['term']=[]
-                #     for argument in re.findall(r'(?:[^\s,"]|"(?:\\.|[^"])*")+', value):
-                #         magics['term'] += [argument.strip('"')]
-                # elif key == "outputtype":
-                #     magics[key]=value
-                # elif key == "log":
-                #     magics['log'] = value.strip()
-                #     self.kobj._loglevel= value.strip()
-                # elif key == "loadurl":
-                #     url=value
-                #     if(len(url)>0):
-                #         line=self.kobj.loadurl(url)
-                #         actualCode += line + '\n'
-                # elif key == "runprg":
-                #     magics['runprg'] = value
-                # elif key == "runprgargs":
-                #     ## Split arguments respecting quotes
-                #     for argument in re.findall(r'(?:[^\s,"]|"(?:\\.|[^"])*")+', value):
-                #         magics['runprgargs'] += [argument.strip('"')]
-                # elif key == "args":
-                #     ## Split arguments respecting quotes
-                #     for argument in re.findall(r'(?:[^\s,"]|"(?:\\.|[^"])*")+', value):
-                #         magics['args'] += [argument.strip('"')]
-                # else:
-                pass
                 #_filter2_magics_i2
                 for pkey,pvalue in self.ISplugins.items():
                     # print( pkey +":"+str(len(pvalue))+"\n")
