@@ -225,6 +225,7 @@ class Magics():
         magics['_st']['runprg'] = value
         return ''
     def kfn_runprgargs(self,key,value,magics,line):
+        # self.kobj._logln(value)
         for argument in re.findall(r'(?:[^\s,"]|"(?:\\.|[^"])*")+', value):
             magics['_st']['runprgargs'] += [argument.strip('"')]
         return ''
