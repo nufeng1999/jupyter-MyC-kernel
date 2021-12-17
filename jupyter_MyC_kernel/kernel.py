@@ -676,22 +676,23 @@ echo "OK"
             return
         except Exception as e:
             self._logln("Executable command error! "+str(e)+"\n",3)
-    def do_Py_command(self,commands=None,cwd=None,magics=None):
-        p = self.create_jupyter_subprocess(['MyPythonKernel']+commands,cwd=os.path.abspath(''),shell=False)
-        self.g_rtsps[str(p.pid)]=p
-        if magics!=None and len(magics['showpid'])>0:
-            self._write_to_stdout("The process PID:"+str(p.pid)+"\n")
-        while p.poll() is None:
-            p.write_contents()
-        # wait for threads to finish, so output is always shown
-        p._stdout_thread.join()
-        p._stderr_thread.join()
-        del self.g_rtsps[str(p.pid)]
-        p.write_contents()
-        if p.returncode != 0:
-            self._write_to_stderr("[MyPythonkernel] Executable exited with code {}".format(p.returncode))
-        else:
-            self._write_to_stdout("[MyPythonkernel] Info:MyPythonKernel command success.")
+    def do_Py_command(self,commands,cwd=None,shell=False,env=True,magics=None):
+        try:
+            cmds=[]
+            for argument in re.findall(r'(?:[^\s,"]|"(?:\\.|[^"])*")+', commands.strip()):
+                cmds += [argument.strip('"')]
+            p = self.create_jupyter_subprocess(['python']+cmds,cwd,shell,env=env,magics=magics)
+            if magics!=None and len(self.get_magicsbykey(magics,'showpid'))>0:
+                self._write_to_stdout("The process PID:"+str(p.pid)+"\n")
+            self.g_rtsps[str(p.pid)]=p
+            returncode=p.wait_end(magics)
+            del self.g_rtsps[str(p.pid)]
+            if returncode != 0:
+                self._logln("Executable python exited with code {}".format(returncode))
+            else:
+                self._logln("command python success.")
+        except Exception as e:
+            self._logln("Executable python command error! "+str(e)+"\n",3)
         return
     def send_cmd(self,pid,cmd):
         try:
