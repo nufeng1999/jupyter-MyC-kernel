@@ -51,6 +51,7 @@ class Magics():
                 },
                 '_bt':{
                 'repllistpid':'',
+                'onlyruncmd':'',
                 'onlyrunmagics':'',
                 'runinterm':'',
                 'replcmdmode':'',
@@ -77,6 +78,7 @@ class Magics():
                 '_btf':{
                 'repllistpid':[self.kobj.repl_listpid],
                 'onlyrunmagics':[],
+                'onlyruncmd':[],
                 'runinterm':[],
                 'replcmdmode':[],
                 'replprompt':[]
@@ -119,6 +121,10 @@ class Magics():
         return magics[key]
     def get_magicsSvalue(self,magics:Dict,key:str):
         return self.addmagicsSkey(magics,key)
+    def get_magicsBvalue(self,magics:Dict,key:str):
+        return self.addmagicsBkey(magics,key)
+    def get_magicsbykey(self,magics:Dict,key:str):
+        return self.addkey2dict(magics,key)
     def addmagicsSLkey(self,magics:Dict,key:str,value=None,func=None):
         return self.addmagicskey2(magics=magics,key=key,type='_sline',func=func,value=value)
     def addmagicsSkey(self,magics:Dict,key:str,func=None):
@@ -137,6 +143,11 @@ class Magics():
         if func!=None:
             magics[type+'f'][key]+=[func]
         return magics[type][key]
+    def addkey2dict(self,magics:Dict,key:str):
+        if not magics.__contains__(key):
+            d={key:[]}
+            magics.update(d)
+        return magics[key]
     def slfn_package(self,key,magics,line):
         qline=self.kobj.replacemany(line,'; ', ';')
         qline=self.kobj.replacemany(qline,' ;', ';')
@@ -251,6 +262,7 @@ class Magics():
                 },
                 '_bt':{
                 'repllistpid':'',
+                'onlyruncmd':'',
                 'onlyrunmagics':'',
                 'runinterm':'',
                 'replcmdmode':'',
@@ -277,6 +289,7 @@ class Magics():
                 '_btf':{
                 'repllistpid':[self.kobj.repl_listpid],
                 'onlyrunmagics':[],
+                'onlyruncmd':[],
                 'runinterm':[],
                 'replcmdmode':[],
                 'replprompt':[]

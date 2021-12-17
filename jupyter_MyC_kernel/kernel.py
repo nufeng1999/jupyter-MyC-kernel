@@ -285,6 +285,10 @@ echo "OK"
         return env_dict
     def get_magicsSvalue(self,magics:Dict,key:str):
         return self.addmagicsSkey(magics,key)
+    def get_magicsBvalue(self,magics:Dict,key:str):
+        return self.addmagicsBkey(magics,key)
+    def get_magicsbykey(self,magics:Dict,key:str):
+        return self.addkey2dict(magics,key)
     def addmagicsSLkey(self,magics:Dict,key:str,value=None,func=None):
         return self.addmagicskey2(magics=magics,key=key,type='_sline',func=func,value=value)
     def addmagicsSkey(self,magics:Dict,key:str,func=None):
@@ -303,14 +307,12 @@ echo "OK"
         if func!=None:
             magics[type+'f'][key]+=[func]
         return magics[type][key]
-    usleep = lambda x: time.sleep(x/1000000.0)
     def addkey2dict(self,magics:Dict,key:str):
         if not magics.__contains__(key):
             d={key:[]}
             magics.update(d)
         return magics[key]
-    def get_magicsbykey(self,magics:Dict,key:str):
-        return self.addkey2dict(magics,key)
+    usleep = lambda x: time.sleep(x/1000000.0)
     def replacemany(self,our_str, to_be_replaced:str, replace_with:str):
         while (to_be_replaced in our_str):
             our_str = our_str.replace(to_be_replaced, replace_with)
@@ -645,9 +647,8 @@ echo "OK"
             return {'status': 'ok', 'execution_count': self.execution_count,
                     'payload': [], 'user_expressions': {}}
     def do_shell_command(self,commands,cwd=None,shell=True,env=True,magics=None):
-        # self._write_to_stdout(''.join((' '+ str(s) for s in commands)))
         try:
-            if len(magics['_st']['replcmdmode'])>0:
+            if len(magics['_bt']['replcmdmode'])>0:
                 findObj= commands[0].split(" ",1)
                 if findObj and len(findObj)>1:
                     cmd=findObj[0]
@@ -659,27 +660,22 @@ echo "OK"
                     self._write_to_stdout(''.join((' '+ str(s) for s in cmdargs))+"\n")
                     self._start_replprg(cmd,cmdargs,magics)
                     return
-            p = RealTimeSubprocess(commands,
-                                  self._write_to_stdout,
-                                  self._write_to_stderr,
-                                  self._read_from_stdin,cwd,shell,env=env)
-            self.g_rtsps[str(p.pid)]=p
-            if magics!=None and len(magics['showpid'])>0:
+            cmds=[]
+            for argument in re.findall(r'(?:[^\s,"]|"(?:\\.|[^"])*")+', commands.strip()):
+                cmds += [argument.strip('"')]
+            p = self.create_jupyter_subprocess(cmds,cwd,shell,env=env,magics=magics)
+            if magics!=None and len(self.get_magicsbykey(magics,'showpid'))>0:
                 self._write_to_stdout("The process PID:"+str(p.pid)+"\n")
-            while p.poll() is None:
-                p.write_contents()
-            # wait for threads to finish, so output is always shown
-            p._stdout_thread.join()
-            p._stderr_thread.join()
+            self.g_rtsps[str(p.pid)]=p
+            returncode=p.wait_end(magics)
             del self.g_rtsps[str(p.pid)]
-            p.write_contents()
-            if p.returncode != 0:
-                self._write_to_stderr("[MyPythonkernel] Error: Executable command exited with code {}\n".format(p.returncode))
+            if returncode != 0:
+                self._logln("Executable command exited with code {}\n".format(returncode),3)
             else:
-                self._write_to_stdout("[MyPythonkernel] Info: command success.\n")
+                self._logln("command success.\n")
             return
         except Exception as e:
-            self._write_to_stderr("[MyPythonkernel] Error:Executable command error! "+str(e)+"\n")
+            self._logln("Executable command error! "+str(e)+"\n",3)
     def do_Py_command(self,commands=None,cwd=None,magics=None):
         p = self.create_jupyter_subprocess(['MyPythonKernel']+commands,cwd=os.path.abspath(''),shell=False)
         self.g_rtsps[str(p.pid)]=p
@@ -997,15 +993,16 @@ echo "OK"
                    user_expressions=None, allow_stdin=True):
         self.silent = silent
         retinfo=self.get_retinfo()
+        if len(code.strip())<1:return retinfo
         magics, code = self.mag.filter(code)
-        if (len(self.addmagicsBkey(magics,'onlyrunmagics'))>0 or len(self.addkey2dict(magics,'onlyruncmd'))>0):
+        if (len(self.get_magicsBvalue(magics,'onlyrunmagics'))>0 or len(self.get_magicsBvalue(magics,'onlyruncmd'))>0):
             bcancel_exec=True
             return retinfo
-        if len(self.addmagicsBkey(magics,'replcmdmode'))>0:
+        if len(self.get_magicsBvalue(magics,'replcmdmode'))>0:
             bcancel_exec=True
             retinfo= self.send_replcmd(code, silent, store_history,user_expressions, allow_stdin)
             return retinfo
-        if(len(self.get_magicsbykey(magics,'runprg'))>0):
+        if(len(self.get_magicsBvalue(magics,'runprg'))>0):
             retinfo=self.do_execute_runprg(code, magics,silent, store_history,
                    user_expressions, allow_stdin)
             self.cleanup_files()

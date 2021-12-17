@@ -45,7 +45,12 @@ class MyShellcommand(IStag):
         return False
     def commandhander(self,key, value,magics,line):
         # self.kobj._write_to_stdout(value+"\n")
-        magics['command'] = [value]
-        if len(magics['command'])>0:
-            self.kobj.do_shell_command(magics['command'],env=magics['env'])
+        try:
+            magics['command'] = value.strip()
+            if len(magics['command'])>0:
+                env=self.kobj.get_magicsSvalue(magics,'env')
+                if len(env)<1:env=None
+                self.kobj.do_shell_command(magics['command'],env=env,magics=magics)
+        except Exception as e:
+            self.kobj._logln("commandhander  "+str(e))
         return ''
