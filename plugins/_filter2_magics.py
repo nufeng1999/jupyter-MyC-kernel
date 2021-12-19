@@ -209,7 +209,7 @@ class Magics():
             magics['_st']['term'] += [argument.strip('"')]
         return ''
     def kfn_outputtype(self,key,value,magics,line):
-        magics[key]=value
+        magics['_st']['outputtype']=value.strip()
         return ''
     def kfn_log(self,key,value,magics,line):
         magics['_st']['log'] = value.strip()

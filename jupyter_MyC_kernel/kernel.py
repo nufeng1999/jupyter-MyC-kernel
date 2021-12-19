@@ -12,6 +12,7 @@ from abc import ABCMeta, abstractmethod
 from typing import List, Dict, Tuple, Sequence
 from shutil import copyfile,move
 from urllib.request import urlopen
+import base64
 import urllib.request
 import urllib.parse
 import platform
@@ -112,7 +113,11 @@ class IREPLWrapper(replwrap.REPLWrapper):
         return pos
 class RealTimeSubprocess(subprocess.Popen):
     inputRequest = "<inputRequest>"
-    def __init__(self, cmd, write_to_stdout, write_to_stderr, read_from_stdin,cwd=None,shell=False,env=None):
+    kobj=None
+    def setkobj(self,k=None):
+        self.kobj=k
+    def __init__(self, cmd, write_to_stdout, write_to_stderr, read_from_stdin,cwd=None,shell=False,env=None,kobj=None):
+        self.kobj=kobj
         self._write_to_stdout = write_to_stdout
         self._write_to_stderr = write_to_stderr
         self._read_from_stdin = read_from_stdin
@@ -142,9 +147,16 @@ class RealTimeSubprocess(subprocess.Popen):
             return res
         stderr_contents = read_all_from_queue(self._stderr_queue)
         if stderr_contents:
-            self._write_to_stderr(stderr_contents.decode('UTF-8', errors='ignore'))
+            if self.kobj!=None:
+                self.kobj._logln(stderr_contents.decode('UTF-8', errors='ignore'),3)
+            else:
+                self._write_to_stderr(stderr_contents.decode('UTF-8', errors='ignore'))
         stdout_contents = read_all_from_queue(self._stdout_queue)
         if stdout_contents:
+            if self.kobj.get_magicsSvalue(magics,"outputtype").startswith("image"):
+                self._write_to_stdout(stdout_contents,magics)
+                magics['_st']["outputtype"]="text/plain"
+                return
             contents = stdout_contents.decode('UTF-8', errors='ignore')
             # if there is input request, make output and then
             # ask frontend for input
@@ -163,7 +175,10 @@ class RealTimeSubprocess(subprocess.Popen):
                 self._write_to_stdout(contents,magics)
     def wait_end(self,magics):
         while self.poll() is None:
+            if self.kobj.get_magicsSvalue(magics,"outputtype").startswith("image"):
+                continue
             self.write_contents(magics)
+        self.write_contents(magics)
         self._write_to_stdout("The process end:"+str(self.pid)+"\n",magics)
         self.write_contents(magics)
         # wait for threads to finish, so output is always shown
@@ -515,15 +530,35 @@ echo "OK"
             else:
                 prestr=self.kernelinfo+' Info:'
                 streamname='stdout'
-            if len(outputtype)>0 and (level!=2 or level!=3):
-                self._write_display_data(mimetype=outputtype,contents=prestr+output)
-                return
+            # if len(outputtype)>0 and (level!=2 or level!=3):
+                # self._write_display_data(mimetype=outputtype,contents=prestr+output)
+                # return
             # Send standard output
             stream_content = {'name': streamname, 'text': prestr+output}
             self.send_response(self.iopub_socket, 'stream', stream_content)
     def _logln(self, output,level=1,outputtype='text/plain'):
         self._log(output+"\n",level=1,outputtype='text/plain')
     def _write_display_data(self,mimetype='text/html',contents=""):
+        try:
+            if mimetype.startswith('image'):
+                metadata ={mimetype:{}}
+                # contents=contents
+                # self._logln(base64.encodebytes(contents))
+                # contents=base64.encodebytes(contents)
+                # contents=urllib.parse.quote(base64.b64encode(contents))
+                header="<div><img alt=\"Output\" src=\"data:image/png;base64,"
+                end="\"></div>"
+                contents=header+base64.encodebytes(contents).decode( errors='ignore')+end
+                mimetype='text/html'
+                metadata = {
+                    # 'text/html' : {
+                    # 'width': 640,
+                    # 'height': 480
+                    # }
+                    }
+        except Exception as e:
+            self._logln("_write_display_data err "+str(e),3)
+            return
         self.send_response(self.iopub_socket, 'display_data', {'data': {mimetype:contents}, 'metadata': {mimetype:{}}})
     def _write_to_stdout(self,contents,magics=None):
         if magics !=None and len(magics['_st']['outputtype'])>0:
@@ -728,7 +763,7 @@ echo "OK"
             return RealTimeSubprocess(cmd,
                                   self._write_to_stdout,
                                   self._write_to_stderr,
-                                  self._read_from_stdin,cwd,shell,env)
+                                  self._read_from_stdin,cwd,shell,env,self)
         except Exception as e:
             self._write_to_stdout("RealTimeSubprocess err:"+str(e))
             raise
@@ -961,6 +996,7 @@ echo "OK"
         runprgargs=self.get_magicsSvalue(magics,'runprgargs')
         if (len(runprgargs)<1):
             self._logln("No label runprgargs!",2)
+        self._logln(runprgargs[0])
         p = self.create_jupyter_subprocess([runprg]+ runprgargs,cwd=None,shell=False,env=self.addkey2dict(magics,'env'))
         self.g_rtsps[str(p.pid)]=p
         return_code=p.returncode
@@ -1003,7 +1039,7 @@ echo "OK"
             bcancel_exec=True
             retinfo= self.send_replcmd(code, silent, store_history,user_expressions, allow_stdin)
             return retinfo
-        if(len(self.get_magicsBvalue(magics,'runprg'))>0):
+        if(len(self.get_magicsSvalue(magics,'runprg'))>0):
             retinfo=self.do_execute_runprg(code, magics,silent, store_history,
                    user_expressions, allow_stdin)
             self.cleanup_files()
