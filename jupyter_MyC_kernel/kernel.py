@@ -175,16 +175,20 @@ class RealTimeSubprocess(subprocess.Popen):
                 self._write_to_stdout(contents,magics)
     def wait_end(self,magics):
         while self.poll() is None:
-            if self.kobj.get_magicsSvalue(magics,"outputtype").startswith("image"):
-                continue
-            self.write_contents(magics)
+            if self.kobj.get_magicsSvalue(magics,"outputtype").startswith("text"):
+                self.write_contents(magics)
+            pass
+            continue
         self.write_contents(magics)
-        self._write_to_stdout("The process end:"+str(self.pid)+"\n",magics)
-        self.write_contents(magics)
+        if self.kobj==None:
+            self._write_to_stdout("The process end:"+str(self.pid)+"\n",magics)
+        else:
+            self.kobj._logln("The process end:"+str(self.pid))
+        # self.write_contents(magics)
         # wait for threads to finish, so output is always shown
         self._stdout_thread.join()
         self._stderr_thread.join()
-        self.write_contents(magics)
+        # self.write_contents(magics)
         return self.returncode
 class MyKernel(Kernel):
     implementation = 'jupyter-MyPython-kernel'
@@ -546,16 +550,16 @@ echo "OK"
                 # self._logln(base64.encodebytes(contents))
                 # contents=base64.encodebytes(contents)
                 # contents=urllib.parse.quote(base64.b64encode(contents))
-                header="<div><img alt=\"Output\" src=\"data:image/png;base64,"
+                header="<div><img alt=\"Output\" src=\"data:"+mimetype+";base64,"
                 end="\"></div>"
                 contents=header+base64.encodebytes(contents).decode( errors='ignore')+end
                 mimetype='text/html'
-                metadata = {
+                metadata = {mimetype:{}}
                     # 'text/html' : {
                     # 'width': 640,
                     # 'height': 480
                     # }
-                    }
+                    # }
         except Exception as e:
             self._logln("_write_display_data err "+str(e),3)
             return
@@ -1229,15 +1233,20 @@ class CKernel(MyKernel):
             cflags = ['-DREAD_ONLY_FILE_SYSTEM'] + cflags
         if self.bufferedOutput:
             cflags = ['-DBUFFERED_OUTPUT'] + cflags
+        index=0
         for s in cflags:
-                if s.startswith('-o'):
-                    if(len(s)>2):
-                        outfile=s[2:]
-                    else:
-                        outfile=cflags[cflags.index('-o')+1]
-                        if outfile.startswith('-'):
-                            outfile=binary_filename
-                binary_filename=outfile
+            if s.startswith('-o'):
+                if(len(s)>2):
+                    outfile=s[2:]
+                    del cflags[index]
+                else:
+                    outfile=cflags[cflags.index('-o')+1]
+                    if not outfile.startswith('-'):
+                        outfile=binary_filename
+                    del cflags[cflags.index('-o')+1]
+                    del cflags[cflags.index('-o')]
+            binary_filename=outfile
+            index+=1
         args=[]
         if magics!=None and len(self.addkey2dict(magics,'ccompiler'))>0:
             args = magics['ccompiler'] + orig_cflags +[source_filename] + orig_ldflags

@@ -82,7 +82,7 @@ class MyPTemplate(ICodePreproc):
             self.cleanjj2code_cache(self)
             return line
         if self.isjj2code: self.addjj2codeline(self,line)
-        line= "" if self.isjj2code else line+"\n"
+        line= "" if self.isjj2code else line
         return line
     def on_Codescanning(self,magics,code)->Tuple[bool,str]:
         actualCode = ''
