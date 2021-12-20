@@ -1,31 +1,33 @@
-# C kernel for Jupyter
-
-This project was forked from [https://github.com/brendan-rius/jupyter-c-kernel](brendan-rius/jupyter-c-kernel) as that project seems to have been abandoned. (PR is pending)
-
-
-## Manual installation
-
-Works only on Linux and OS X. Windows is not supported yet. If you want to use this project on Windows, please use Docker.
-
+# MyC kernel for Jupyter
+[Example](https://github.com/nufeng1999/jupyter-MyC-kernel/blob/master/example/jupyter_MyC_readme.ipynb "Example")
 * Make sure you have the following requirements installed:
-  * gcc
+  * C
   * jupyter
   * python 3
   * pip
-
 ### Step-by-step
-
 ```bash
 git clone https://github.com/nufeng1999/jupyter-MyC-kernel.git
 cd jupyter-MyC-kernel
 pip install -e .  # for system install: sudo install .
-cd jupyter_MyC_kernel && install_MyC_kernel --user # for sys install: sudo install_c_kernel
+cd jupyter_MyC_kernel && install_MyC_kernel --user
 # now you can start the notebook
 jupyter notebook
 ```
-----
-### Support label
-#### Label
+Other jupyter kernel
+|                   |                 |
+| :--------------------------------------------------------------------- | :--------------------------------------------------------------------- |
+|[MyBash](https://github.com/nufeng1999/jupyter-MyBash-kernel)           |[MyC](https://github.com/nufeng1999/jupyter-MyC-kernel)                 |
+|[MyDart](https://github.com/nufeng1999/jupyter-MyDart-kernel)           |[MyGjs](https://github.com/nufeng1999/jupyter-MyGjs-kernel)             |
+|[MyGo](https://github.com/nufeng1999/jupyter-MyGo-kernel)               |[MyGroovy](https://github.com/nufeng1999/jupyter-MyGroovy-kernel)       |
+|[MyJava](https://github.com/nufeng1999/jupyter-MyJava-kernel)           |[MyKotlin](https://github.com/nufeng1999/jupyter-MyKotlin-kernel)       |
+|[MyNodejs](https://github.com/nufeng1999/jupyter-MyNodejs-kernel)       |[MyPython](https://github.com/nufeng1999/jupyter-MyPython-kernel)       |
+|[MyVala](https://github.com/nufeng1999/jupyter-MyVala-kernel)           |[MyVBScript](https://github.com/nufeng1999/jupyter-MyVBScript-kernel)   |
+|[MyWolframScript](https://github.com/nufeng1999/jupyter-MyWLS-kernel)   |                                                                        |  
+  
+----  
+### Support label  
+#### Label  
 Label prefix is `##%` or `//%`  
 Example1:   
 `##%overwritefile`  
@@ -42,10 +44,9 @@ Example3:
 `##%file:test.sh`  
 `echo "shell cmd test"`   
 `ls`   
-
+  
 ----
 #### Compile and run code
-
 | label       |   value   | annotation                                                                                                       |
 | :------------ | :----------: | :----------------------------------------------------------------------------------------------------------------- |
 | cflags:     |            | Specifies the compilation parameters for C language compilation                                                  |
@@ -56,12 +57,8 @@ Example3:
 | runprg:     |            | The code content will be run by the execution file specified by runprg                                           |
 | runprgargs: |            | runprg Parameters of the specified executable ,You can put the name specified by file into the parameter string. |
 | outputtype: | text/plain | mime-type                                                                                                        |
-
 ---
-
 #### Interactive running code
-
-
 | label         | value | annotation                                                                                  |
 | :-------------- | :------: | :-------------------------------------------------------------------------------------------- |
 | runmode:      |  repl  | The code will run in interactive mode.                                                      |
@@ -69,33 +66,21 @@ Example3:
 | replsetip:    | "\r\n" | Set (repl interactive mode) the prompt string when waiting for input                        |
 | replchildpid: |        | (repl interactive mode) specifies the running process number                                |
 | repllistpid   |        | Lists the interactive process PIDs that are running                                         |
-
 ---
-
 #### Interactive running GDB
-
-
 | label  | value | annotation                                               |
 | :------- | :-----: | :--------------------------------------------------------- |
 | rungdb |      | Run GDB and send commands to GDB (repl interactive mode) |
-
 ---
-
 #### Save code and include file
-
-
 | label         | value | annotation                                               |
 | :-------------- | :-----: | :--------------------------------------------------------- |
 | noruncode     |      | Do not run code content                                  |
 | overwritefile |      | Overwrite existing files                                 |
 | file:         |      | The code can be saved to multiple files                  |
 | include:      |      | Places the specified file contents in the label location |
-
 ---
-
 #### Templates and testing
-
-
 | label                                                                                                                                          |
 | :----------------------------------------------------------------------------------------------------------------------------------------------- |
 | Define a macro                                                                                                                                 |
@@ -111,12 +96,8 @@ Example3:
 | ##test_begin  /  //test_begin                                                                                                                  |
 | ##test_end    /  //test_end                                                                                                                    |
 | test_ Begin and test_ End is the test code，Will not be saved to the file                                                                      |
-
 ---
-
 #### Commands and environment variables
-
-
 | label       |           value           | annotation                                                                         |
 | :------------ | :-------------------------: | :----------------------------------------------------------------------------------- |
 | command:    |                          | shell command or executable                                                        |
@@ -125,20 +106,12 @@ Example3:
 | fluttercmd: | flutter parameter command |                                                                                    |
 | kcmd:       |                          | jupyter kernel command                                                             |
 | env:        |                          | Setting environment variables for code file runtime.example: name=xxx name2='dddd' |
-
 ---
-
 #### Behavior control
-
-
 | label       | value | annotation                 |
 | :------------ | :-----: | :--------------------------- |
 | noruncode   |      | Do not run code content    |
 | onlycsfile  |      | Generate code files only   |
 | onlyruncmd  |      | Run the label command only |
 | onlycompile |      | Compile code content only  |
-
-
-## License
-
 [MIT](LICENSE.txt)

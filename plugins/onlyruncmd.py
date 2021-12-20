@@ -15,7 +15,7 @@ class Myonlyruncmd(IBtag):
     def getExcludeID(self)->List[str]:
         return []
     def getIDBptag(self) -> List[str]:
-        return ['onlyruncmd']
+        return ['onlyruncmd','onlyrunlable']
     def setKernelobj(self,obj):
         self.kobj=obj
         # self.kobj._write_to_stdout("setKernelobj setKernelobj setKernelobj\n")
@@ -26,13 +26,13 @@ class Myonlyruncmd(IBtag):
         # self.kobj._write_to_stdout(line+" on_IBpCodescanning\n")
         self.kobj.addkey2dict(magics,'onlyruncmd')
         magics['onlyruncmd'] = ['true']
-        # self.kobj._log(magics['onlyruncmd']+" on_IBpCodescanning\n")
+        # self.kobj._log(magics['onlyruncmd']+"  magics['onlyruncmd'][0]\n")
         return ''
     def on_Codescanning(self,magics,code)->Tuple[bool,str]:
         pass
         return False,code
     def on_before_buildfile(self,code,magics)->Tuple[bool,str]:
-        return True,''
+        return False,''
     def on_after_buildfile(self,returncode,srcfile,magics)->bool:
         return False
     def on_before_compile(self,code,magics)->Tuple[bool,str]:

@@ -1,4 +1,5 @@
 #_filter2_magics
+##########################
 from math import exp
 from queue import Queue
 from threading import Thread
@@ -26,6 +27,7 @@ import time
 import importlib
 import importlib.util
 import inspect
+###############################
 class Magics():
     plugins=None
     ISplugins=None
@@ -51,8 +53,6 @@ class Magics():
                 },
                 '_bt':{
                 'repllistpid':'',
-                'onlyruncmd':'',
-                'onlyrunmagics':'',
                 'runinterm':'',
                 'replcmdmode':'',
                 'replprompt':''
@@ -77,8 +77,6 @@ class Magics():
                 '_dt':{},
                 '_btf':{
                 'repllistpid':[self.kobj.repl_listpid],
-                'onlyrunmagics':[],
-                'onlyruncmd':[],
                 'runinterm':[],
                 'replcmdmode':[],
                 'replprompt':[]
@@ -263,8 +261,6 @@ class Magics():
                 },
                 '_bt':{
                 'repllistpid':'',
-                'onlyruncmd':'',
-                'onlyrunmagics':'',
                 'runinterm':'',
                 'replcmdmode':'',
                 'replprompt':''
@@ -289,8 +285,6 @@ class Magics():
                 '_dt':{},
                 '_btf':{
                 'repllistpid':[self.kobj.repl_listpid],
-                'onlyrunmagics':[],
-                'onlyruncmd':[],
                 'runinterm':[],
                 'replcmdmode':[],
                 'replprompt':[]
@@ -360,6 +354,7 @@ class Magics():
             if magics[type].__contains__(key):
                 magics[type][key]='true'
                 if len(magics[type+'f'][key])>0:
+                    ##处理关键字相关的函数
                     for kfunc in magics[type+'f'][key]:
                         kfunc(line)
                 return True
@@ -400,14 +395,19 @@ class Magics():
                 finally:pass
         return bcancel_exec,newcode
     def filter(self, code):
+        ##魔法字典
         actualCode = ''
         newactualCode = ''
         self.reset_filter()
         self.init_filter(self.magics)
         magics =self.magics
+       ##扫描源码 进行标签行，特殊行处理
         for line in code.splitlines():
+            ##扫描源码每行行
             orgline=line
-            if line==None or line.strip()=='': continue
+            if line==None or line.strip()=='': 
+                actualCode += line + '\n'
+                continue
             ismatch,retstr=self.call_slproc(magics,line)
             if ismatch:
                 if len(retstr)>0:
@@ -417,21 +417,27 @@ class Magics():
                 continue
             if self._is_specialID(line):
                 if self.call_btproc(magics,line):continue
-                else:
-                    #_filter2_magics_i1
-                    for pkey,pvalue in self.IBplugins.items():
-                        # print( pkey +":"+str(len(pvalue))+"\n")
-                        for pobj in pvalue:
-                            newline=''
-                            try:
-                                if line.strip()[3:] in pobj.getIDBptag(pobj):
-                                    newline=pobj.on_IBpCodescanning(pobj,magics,line)
-                                    if newline=='':continue
-                            except Exception as e:
-                                pass
-                            finally:pass
-                            # if newline!=None and newline!='':
-                            #     actualCode += newline + '\n'
+                ##通知插件进行预处理
+                ##preprocessor
+                ##通知BOOL型标签插件处理
+                ##on_IBpCodescanning
+                ##调用BOOL标签接口
+                #_filter2_magics_i1
+                for pkey,pvalue in self.IBplugins.items():
+                    print( pkey +":"+str(len(pvalue))+"\n")
+                    for pobj in pvalue:
+                        newline=''
+                        try:
+                            if line.strip()[3:] in pobj.getIDBptag(pobj):
+                                newline=pobj.on_IBpCodescanning(pobj,magics,line)
+                                if newline=='':continue
+                        except Exception as e:
+                            self._logln(str(e))
+                        finally:pass
+                        # if newline!=None and newline!='':
+                        #     actualCode += newline + '\n'
+                ##获得BOOL关键字
+                ##登记Bool型参数和值
                 findObj= re.search( r':(.*)',line)
                 if not findObj or len(findObj.group(0))<2:
                     continue
@@ -441,6 +447,11 @@ class Magics():
                 if newline!=line and len(newline)>0:
                     actualCode += newline + '\n'
                     continue
+               ##通知(赋值型插件)进行预处理
+                ##登记参数和值
+                ##处理参数和值 ？？？
+                ##合并处理结果
+                ##调用单标签接口
                 #_filter2_magics_i2
                 for pkey,pvalue in self.ISplugins.items():
                     # print( pkey +":"+str(len(pvalue))+"\n")
@@ -460,9 +471,14 @@ class Magics():
             else:
                 actualCode += line + '\n'
         newactualCode=actualCode
+       ##第二次扫描源代码，进行预处理，比如宏标签处理，模板标签处理
         bcancel_exec,newcode=self.raise_ICodescan(magics,newactualCode)
         if not bcancel_exec:
             newactualCode=newcode
+       ##第三次扫描源代码，进行代码格式化
+            ##扫描源码每行行
+            ##清理测试代码 test_begin test_end
+            ##清理单行注释 // #
         #_filter2_magics_pend
         if len(self.addkey2dict(magics,'file'))>0 :
             newactualCode=''
@@ -484,4 +500,5 @@ class Magics():
                         newactualCode += line + '\n'
                 except Exception as e:
                     self.kobj._log(str(e),3)
+       ##返回 magics, newactualCode
         return magics, newactualCode
