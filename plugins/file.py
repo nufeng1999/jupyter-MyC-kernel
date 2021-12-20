@@ -35,9 +35,11 @@ class MyFile(IStag):
         except Exception as e:
             self.kobj._log(str(e),2)
         return ''
+    ##在代码预处理前扫描代码时调用    
     def on_Codescanning(self,magics,code)->Tuple[bool,str]:
         pass
         return False,code
+    ##生成文件时调用
     def on_before_buildfile(self,code,magics)->Tuple[bool,str]:
         return False,''
     def on_after_buildfile(self,returncode,srcfile,magics)->bool:

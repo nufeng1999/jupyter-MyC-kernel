@@ -27,9 +27,11 @@ class Myonlycompile(IBtag):
         magics['onlycompile'] = ['true']
         # self.kobj._log(magics['onlycompile']+" on_IBpCodescanning\n")
         return ''
+    ##在代码预处理前扫描代码时调用    
     def on_Codescanning(self,magics,code)->Tuple[bool,str]:
         pass
         return False,code
+    ##生成文件时调用
     def on_before_buildfile(self,code,magics)->Tuple[bool,str]:
         return False,''
     def on_after_buildfile(self,returncode,srcfile,magics)->bool:
@@ -44,3 +46,4 @@ class Myonlycompile(IBtag):
         return False
     def on_after_completion(self,returncode,execfile,magics)->bool:
         return False
+    

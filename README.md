@@ -9,8 +9,8 @@
 ```bash
 git clone https://github.com/nufeng1999/jupyter-MyC-kernel.git
 cd jupyter-MyC-kernel
-pip install -e .  # for system install: sudo install .
-cd jupyter_MyC_kernel && install_MyC_kernel --user
+pip install -e . 
+cd jupyter_MyC_kernel && python3 install_MyC_kernel --user
 # now you can start the notebook
 jupyter notebook
 ```
@@ -23,7 +23,7 @@ Other jupyter kernel
 |[MyJava](https://github.com/nufeng1999/jupyter-MyJava-kernel)           |[MyKotlin](https://github.com/nufeng1999/jupyter-MyKotlin-kernel)       |
 |[MyNodejs](https://github.com/nufeng1999/jupyter-MyNodejs-kernel)       |[MyPython](https://github.com/nufeng1999/jupyter-MyPython-kernel)       |
 |[MyVala](https://github.com/nufeng1999/jupyter-MyVala-kernel)           |[MyVBScript](https://github.com/nufeng1999/jupyter-MyVBScript-kernel)   |
-|[MyWolframScript](https://github.com/nufeng1999/jupyter-MyWLS-kernel)   |                                                                        |  
+|[MyWolframScript](https://github.com/nufeng1999/jupyter-MyWLS-kernel)   |[MyVBScript](https://github.com/nufeng1999/jupyter-MyHtml-kernel)       |  
   
 ----  
 ### Support label  

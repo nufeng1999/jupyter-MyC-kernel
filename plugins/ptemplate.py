@@ -7,6 +7,7 @@ class MyPTemplate(ICodePreproc):
     kobj=None
     def getName(self) -> str:
         # self.kobj._write_to_stdout("setKernelobj setKernelobj setKernelobj\n")
+        
         return 'MyPTemplate'
     def getAuthor(self) -> str:
         return 'Author'
@@ -84,13 +85,17 @@ class MyPTemplate(ICodePreproc):
         if self.isjj2code: self.addjj2codeline(self,line)
         line= "" if self.isjj2code else line
         return line
+    ##在代码预处理前扫描代码时调用    
     def on_Codescanning(self,magics,code)->Tuple[bool,str]:
+        ##扫描源码
         actualCode = ''
         for line in code.splitlines():
+            ##扫描源码每行行
             orgline=line
             line=self.forcejj2code(self,line)
             actualCode += line + '\n'
         return False,actualCode
+    ##生成文件时调用
     def on_before_buildfile(self,code,magics)->Tuple[bool,str]:
         return False,''
     def on_after_buildfile(self,returncode,srcfile,magics)->bool:

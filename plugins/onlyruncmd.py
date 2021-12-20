@@ -5,6 +5,7 @@ class Myonlyruncmd(IBtag):
     kobj=None
     def getName(self) -> str:
         # self.kobj._write_to_stdout("setKernelobj setKernelobj setKernelobj\n")
+        
         return 'Myonlyruncmd'
     def getAuthor(self) -> str:
         return 'Author'
@@ -28,9 +29,11 @@ class Myonlyruncmd(IBtag):
         magics['onlyruncmd'] = ['true']
         # self.kobj._log(magics['onlyruncmd']+"  magics['onlyruncmd'][0]\n")
         return ''
+    ##在代码预处理前扫描代码时调用      
     def on_Codescanning(self,magics,code)->Tuple[bool,str]:
         pass
         return False,code
+    ##生成文件时调用
     def on_before_buildfile(self,code,magics)->Tuple[bool,str]:
         return False,''
     def on_after_buildfile(self,returncode,srcfile,magics)->bool:
@@ -45,3 +48,5 @@ class Myonlyruncmd(IBtag):
         return False
     def on_after_completion(self,returncode,execfile,magics)->bool:
         return False
+    
+    

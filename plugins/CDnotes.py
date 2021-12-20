@@ -5,6 +5,7 @@ class MyCDnotes(IDtag):
     kobj=None
     def getName(self) -> str:
         # self.kobj._write_to_stdout("setKernelobj setKernelobj setKernelobj\n")
+        
         return 'MyCDnotes'
     def getAuthor(self) -> str:
         return 'Author'
@@ -29,6 +30,7 @@ class MyCDnotes(IDtag):
         #  self.addkey2dict(magics,'dartcmd')
         return self.cleancqm(self,line)
         # return ''
+    ##在代码预处理前扫描代码时调用     
     def on_Codescanning(self,magics,code)->Tuple[bool,str]:
         pass
         return False,code

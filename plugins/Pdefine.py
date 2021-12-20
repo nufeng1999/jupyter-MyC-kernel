@@ -22,11 +22,14 @@ class MyPDefine(ICodePreproc):
         return
     def on_shutdown(self, restart):
         return
+    ##在代码预处理前扫描代码时调用    
     def on_Codescanning(self,magics,code)->Tuple[bool,str]:
+        ##扫描源码
         # self.kobj._logln("----on_Codescanning----")
         actualCode =''
         # self.kobj._logln(code)
         for line in code.splitlines():
+            ##扫描源码每行行
             orgline=line
             if not (line.strip().startswith('##$') or line.strip().startswith('//$')):
                 actualCode += line + '\n'
@@ -40,9 +43,11 @@ class MyPDefine(ICodePreproc):
                 argsstr = li[1].strip()
             args=self.kobj.resolving_eqval2dict(argsstr)
             line=self.macrorender(self,magics,name,args)
+            ##替换所有 name 为 line
             actualCode += line + '\n'
         # self.kobj._logln(actualCode)
         return False,actualCode
+    ##生成文件时调用
     def on_before_buildfile(self,code,magics)->Tuple[bool,str]:
         return False,''
     def on_after_buildfile(self,returncode,srcfile,magics)->bool:
