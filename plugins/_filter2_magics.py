@@ -3,6 +3,7 @@
 from math import exp
 from queue import Queue
 from threading import Thread
+    
 from ipykernel.kernelbase import Kernel
 from pexpect import replwrap, EOF
 from jinja2 import Environment, PackageLoader, select_autoescape,Template
@@ -34,6 +35,7 @@ class Magics():
     IDplugins=None
     IBplugins=None
     kobj=None
+    
     plugins=[ISplugins,IDplugins,IBplugins]
     def __init__(self,kobj,plugins:List,ICodePreprocs):
         self.kobj=kobj
@@ -43,6 +45,8 @@ class Magics():
         self.IDplugins=self.plugins[1]
         self.IBplugins=self.plugins[2]
         self.magics = {
+            ##magics_define
+              ##
                 '_sline':{
                   'package':'0',
                   'public':'0'
@@ -117,6 +121,7 @@ class Magics():
             d={key:[]}
             magics.update(d)
         return magics[key]
+    
     def get_magicsSvalue(self,magics:Dict,key:str):
         return self.addmagicsSkey(magics,key)
     def get_magicsBvalue(self,magics:Dict,key:str):
@@ -146,6 +151,7 @@ class Magics():
             d={key:[]}
             magics.update(d)
         return magics[key]
+##特殊行处理
     def slfn_package(self,key,magics,line):
         qline=self.kobj.replacemany(line,'; ', ';')
         qline=self.kobj.replacemany(qline,' ;', ';')
@@ -164,6 +170,7 @@ class Magics():
                 pubclass = pubclass[:len(pubclass)-1]
             magics['pubclass'] = pubclass
         return ''
+##关键字相关函数
     def kfn_ldflags(self,key,value,magics,line):
         for flag in value.split():
             magics['_st'][key] += [flag]
@@ -251,6 +258,8 @@ class Magics():
         self.addmagicsSkey(magics,'args',self.kfn_args)
     def reset_filter(self):
         self.magics = {
+            ##magics_define
+              ##
                 '_sline':{
                   'package':'0',
                   'public':'0'
@@ -377,6 +386,7 @@ class Magics():
             self.kobj._logln("call_stproc "+str(e),3)
         finally:pass
         return newline
+    ##触发接口调用
     def raise_ICodescan(self,magics,code)->Tuple[bool,str]:
         bcancel_exec=False
         bretcancel_exec=False
@@ -394,6 +404,7 @@ class Magics():
                     self.kobj._logln(pobj.getName(pobj)+"---"+str(e))
                 finally:pass
         return bcancel_exec,newcode
+        
     def filter(self, code):
         ##魔法字典
         actualCode = ''
@@ -401,6 +412,7 @@ class Magics():
         self.reset_filter()
         self.init_filter(self.magics)
         magics =self.magics
+        
        ##扫描源码 进行标签行，特殊行处理
         for line in code.splitlines():
             ##扫描源码每行行
@@ -417,6 +429,8 @@ class Magics():
                 continue
             if self._is_specialID(line):
                 if self.call_btproc(magics,line):continue
+ 
+                
                 ##通知插件进行预处理
                 ##preprocessor
                 ##通知BOOL型标签插件处理
@@ -436,6 +450,7 @@ class Magics():
                         finally:pass
                         # if newline!=None and newline!='':
                         #     actualCode += newline + '\n'
+                ##
                 ##获得BOOL关键字
                 ##登记Bool型参数和值
                 findObj= re.search( r':(.*)',line)
@@ -443,6 +458,7 @@ class Magics():
                     continue
                 key, value = line.strip()[3:].split(":", 1)
                 key = key.strip().lower()
+               
                 newline=self.call_stproc(magics,line,key,value)
                 if newline!=line and len(newline)>0:
                     actualCode += newline + '\n'
@@ -454,20 +470,19 @@ class Magics():
                 ##调用单标签接口
                 #_filter2_magics_i2
                 for pkey,pvalue in self.ISplugins.items():
-                    # print( pkey +":"+str(len(pvalue))+"\n")
                     for pobj in pvalue:
                         newline=''
                         try:
-                            if key in pobj.getIDSptag(pobj):
-                                newline=pobj.on_ISpCodescanning(pobj,key,value,magics,line)
+                            li=pobj.getIDSptag(pobj)
+                            if key.lower() in li:
+                                self.kobj._logln(li[0]+":"+value)
+                                newline=pobj.on_ISpCodescanning(pobj,li[0],value,magics,line)
                                 if newline=='':continue
                         except Exception as e:
                             pass
                         finally:pass
                         if newline!=None and newline!='':
                             actualCode += newline + '\n'
-                # always add empty line, so line numbers don't change
-                # actualCode += '\n'
             else:
                 actualCode += line + '\n'
         newactualCode=actualCode
@@ -487,6 +502,7 @@ class Magics():
                     # if len(self.addkey2dict(magics,'test'))<1:
                     line=self.kobj.cleantestcode(line)
                     if line=='':continue
+                    ##调用双标签接口
                     line=self.kobj.callIDplugin(line)
                     if line=='':continue
                     if len(self.addkey2dict(magics,'discleannotes'))>0 :continue
