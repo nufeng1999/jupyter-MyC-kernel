@@ -14,7 +14,7 @@ cd jupyter_MyC_kernel && python3 install_MyC_kernel --user
 # now you can start the notebook
 jupyter notebook
 ```
-Other jupyter kernel
+My minification kelnel of jupyter
 |                   |                 |
 | :--------------------------------------------------------------------- | :--------------------------------------------------------------------- |
 |[MyBash](https://github.com/nufeng1999/jupyter-MyBash-kernel)           |[MyC](https://github.com/nufeng1999/jupyter-MyC-kernel)                 |
@@ -74,11 +74,15 @@ Example3:
 | rungdb |      | Run GDB and send commands to GDB (repl interactive mode) |
 ---
 #### Save code and include file
-| label         | value | annotation                                               |
-| :-------------- | :-----: | :--------------------------------------------------------- |
+| label         | value | annotation                                              |
+| :------------ | :---: | :-------------------------------------------------- |
 | noruncode     |      | Do not run code content                                  |
 | overwritefile |      | Overwrite existing files                                 |
 | file:         |      | The code can be saved to multiple files                  |
+| fndict:       |      | Dictionary for file names                                |
+| filefordict:  |      | Replace $key of fndict with a string from the fndict when save file |
+| fnlist:       |      | List for file names                                      |
+| fileforlist:  |      | Replace $fnlist with a string from the list  when save file |
 | include:      |      | Places the specified file contents in the label location |
 ---
 #### Templates and testing

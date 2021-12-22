@@ -1,7 +1,9 @@
+## %file:src/ptemplate.py
 import typing as t
 import os
 from typing import Dict, Tuple, Sequence,List
 from jinja2 import Environment, PackageLoader, select_autoescape,Template
+
 from plugins.ISpecialID import IStag,IDtag,IBtag,ITag,ICodePreproc
 class MyPTemplate(ICodePreproc):
     kobj=None
@@ -85,6 +87,7 @@ class MyPTemplate(ICodePreproc):
         if self.isjj2code: self.addjj2codeline(self,line)
         line= "" if self.isjj2code else line
         return line
+
     ##在代码预处理前扫描代码时调用    
     def on_Codescanning(self,magics,code)->Tuple[bool,str]:
         ##扫描源码
@@ -128,6 +131,7 @@ class MyPTemplate(ICodePreproc):
         if len(magics['templatefile'])>0:
             newline=self.readtemplatefile(self,templatefile,index1,templateargsdict)
         return newline + '\n'
+
     def readtemplatefile(self,filename,spacecount=0,*args: t.Any, **kwargs: t.Any):
         filecode=''
         newfilecode=''
@@ -137,6 +141,7 @@ class MyPTemplate(ICodePreproc):
             return filecode;
         template = self.jinja2_env.get_template(filenm)
         filecode=template.render(*args,**kwargs)
+
         for line in filecode.splitlines():
             if len(line)>0:
                 for t in line:

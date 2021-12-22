@@ -1,8 +1,10 @@
+## %file:src/Pdefine.py
 import typing as t
 import os
 from typing import Dict, Tuple, Sequence,List
 from jinja2 import Environment, PackageLoader, select_autoescape,Template
 import re
+
 from plugins.ISpecialID import IStag,IDtag,IBtag,ITag,ICodePreproc
 class MyPDefine(ICodePreproc):
     kobj=None
@@ -36,6 +38,7 @@ class MyPDefine(ICodePreproc):
                 continue
             name=''
             argsstr=''
+
             li = line.strip()[3:].strip().split(" ", 1)
             if len(li)>0:
                 name = li[0].strip()
@@ -74,3 +77,4 @@ class MyPDefine(ICodePreproc):
         if line.strip().startswith('##%') or line.strip().startswith('//%'):
             return True
         return False
+

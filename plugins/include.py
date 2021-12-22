@@ -1,4 +1,4 @@
-##//%include:src/test1.py
+## %file:src/include.py
 from typing import Dict, Tuple, Sequence,List
 from plugins.ISpecialID import IStag,IDtag,IBtag,ITag
 from plugins._filter2_magics import Magics
@@ -51,29 +51,34 @@ class MyInclude(IStag):
     def includehander(self,key, value,magics,line):
         # self.kobj._write_to_stdout(value+"\n")
         if len(value)>0:
-            magics[key] = value
+            magics[key] = value.strip()
         else:
             magics[key] =''
             return ''
         if len(magics['include'])>0:
             index1=line.find('##%')
-            # self.kobj._write_to_stdout("readcodefile\n")
-            line=self.readcodefile(self,magics['include'],index1)
+            if index1<1:
+                index1=line.find('//%')
+            spacechar=' '
+            if index1>0:
+                spacechar=line[0]
+            ## self.kobj._logln(magics['include']+" index1 "+str(index1))
+            line=self.readcodefile(self,filename=magics['include'],spacecount=index1,spacechar=spacechar)
         return line
-    def readcodefile(self,filename,spacecount=0):
+    def readcodefile(self,filename,spacecount=0,spacechar=' '):
         filecontent=''
         filecode=''
         codelist1=None
+        # self.kobj._log(os.path.join(os.path.abspath(''),filename+"\n"))
         if not os.path.exists(filename):
             return ''
-        # self.kobj._log(os.path.join(os.path.abspath(''),filename+"\n"))
         with open(os.path.join(os.path.abspath(''),filename), 'r',encoding="UTF-8") as codef1:
             codelist1 = codef1.readlines()
         #扫描源码
         # filecode=codelist1
         if len(codelist1)>0:
             for t in codelist1:
-                filecontent+=' '*spacecount + t
+                filecontent+=spacechar*spacecount + t
         try:
             newmagics,filecontent=self.kobj.mag.filter(filecontent)
         except Exception as e:
