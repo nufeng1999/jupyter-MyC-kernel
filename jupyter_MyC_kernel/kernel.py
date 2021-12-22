@@ -40,6 +40,8 @@ from plugins._filter2_magics import Magics
 #
 #   MyPython Jupyter Kernel
 #
+###%include:../src/head.py
+###%include:../src/common.py
 class IREPLWrapper(replwrap.REPLWrapper):
     def __init__(self, write_to_stdout, write_to_stderr, read_from_stdin,
                 cmd_or_spawn,replsetip, orig_prompt, prompt_change,
@@ -303,40 +305,52 @@ echo "OK"
             li= [i for i in li if i != '']
             env_dict[str(li[0])]=li[1]
         return env_dict
+##//%include:../src/_templateHander.py
+##//%include:../src/_readtemplatefile.py
+##内核公共代码部分2
     def get_magicsSvalue(self,magics:Dict,key:str):
         return self.addmagicsSkey(magics,key)
     def get_magicsBvalue(self,magics:Dict,key:str):
         return self.addmagicsBkey(magics,key)
     def get_magicsbykey(self,magics:Dict,key:str):
         return self.addkey2dict(magics,key)
+    
     def addmagicsSLkey(self,magics:Dict,key:str,value=None,func=None):
         return self.addmagicskey2(magics=magics,key=key,type='_sline',func=func,value=value)
     def addmagicsSkey(self,magics:Dict,key:str,func=None):
         return self.addmagicskey2(magics=magics,key=key,type='_st',func=func)
     def addmagicsBkey(self,magics:Dict,key:str,value=None,func=None):
         return self.addmagicskey2(magics=magics,key=key,type='_bt',func=func,value=value)
+    
     def addmagicskey2(self,magics:Dict,key:str,type:str,func=None,value=None):
         if not magics[type].__contains__(key):
+            ##添加 key
             d={key:[]}
             if value!=None:
                 d={key:value}
             magics[type].update(d)
         if not magics[type+'f'].__contains__(key):
+            ##添加 key相关回调函数
             d={key:[]}
             magics[type+'f'].update(d)
         if func!=None:
             magics[type+'f'][key]+=[func]
         return magics[type][key]
-    def addkey2dict(self,magics:Dict,key:str):
+    def addkey2dict(self,magics:Dict,key:str,type:str=None):
         if not magics.__contains__(key):
             d={key:[]}
+            if type!=None and type=="dict":
+                d={key:{}}
             magics.update(d)
         return magics[key]
+##内核公共代码部分
     usleep = lambda x: time.sleep(x/1000000.0)
+    ##全部替换our_str字符串里的to_be_replaced为replace_with
     def replacemany(self,our_str, to_be_replaced:str, replace_with:str):
         while (to_be_replaced in our_str):
             our_str = our_str.replace(to_be_replaced, replace_with)
         return our_str
+    ##处理acb=xxx 这样的参数字符串到字典{}里
     def _filter_dict(self,argsstr):
         if not argsstr or len(argsstr.strip())<1:
             return None
@@ -348,6 +362,7 @@ echo "OK"
             li= [i for i in li if i != '']
             env_dict[str(li[0])]=li[1]
         return env_dict
+    ##文件处理器
     def _fileshander(self,files:List,srcfilename,magics)->str:
         index=-1
         fristfile=srcfilename
@@ -598,6 +613,7 @@ echo "OK"
         except Exception as e:
             self._logln("loadurl error! "+str(e),3)
         return content
+    #####################################################################
     def _start_replprg(self,command,args,magics):
         # Signal handlers are inherited by forked processes, and we can't easily
         # reset it from the subprocess. Since kernelapp ignores SIGINT except in
@@ -686,6 +702,7 @@ echo "OK"
         else:
             return {'status': 'ok', 'execution_count': self.execution_count,
                     'payload': [], 'user_expressions': {}}
+    #####################################################################
     def do_shell_command(self,commands,cwd=None,shell=True,env=True,magics=None):
         try:
             if len(magics['_bt']['replcmdmode'])>0:
@@ -716,6 +733,7 @@ echo "OK"
             return
         except Exception as e:
             self._logln("Executable command error! "+str(e)+"\n",3)
+    
     def do_Py_command(self,commands,cwd=None,shell=False,env=True,magics=None):
         try:
             cmds=[]
@@ -734,6 +752,7 @@ echo "OK"
         except Exception as e:
             self._logln("Executable python command error! "+str(e)+"\n",3)
         return
+    
     def send_cmd(self,pid,cmd):
         try:
             # self._write_to_stdout("send cmd PID:"+pid+"\n cmd:"+cmd)
@@ -821,6 +840,8 @@ echo "OK"
         return fil_ename
     def generate_Pythonfile(self, source_filename, binary_filename, cflags=None, ldflags=None):
         return
+#####################################################################
+#####################################################################
     def _add_main(self, magics, code):
         # remove comments
         tmpCode = re.sub(r"//.*", "", code)
@@ -1065,6 +1086,7 @@ echo "OK"
         self.chk_replexit_thread.join()
         # self.onkernelshutdown()
         self.cleanup_files()
+#####################################################################
     ISplugins={"0":[],
          "1":[],
          "2":[],

@@ -122,33 +122,40 @@ class Magics():
             magics.update(d)
         return magics[key]
     
+##内核公共代码部分2
     def get_magicsSvalue(self,magics:Dict,key:str):
         return self.addmagicsSkey(magics,key)
     def get_magicsBvalue(self,magics:Dict,key:str):
         return self.addmagicsBkey(magics,key)
     def get_magicsbykey(self,magics:Dict,key:str):
         return self.addkey2dict(magics,key)
+    
     def addmagicsSLkey(self,magics:Dict,key:str,value=None,func=None):
         return self.addmagicskey2(magics=magics,key=key,type='_sline',func=func,value=value)
     def addmagicsSkey(self,magics:Dict,key:str,func=None):
         return self.addmagicskey2(magics=magics,key=key,type='_st',func=func)
     def addmagicsBkey(self,magics:Dict,key:str,value=None,func=None):
         return self.addmagicskey2(magics=magics,key=key,type='_bt',func=func,value=value)
+    
     def addmagicskey2(self,magics:Dict,key:str,type:str,func=None,value=None):
         if not magics[type].__contains__(key):
+            ##添加 key
             d={key:[]}
             if value!=None:
                 d={key:value}
             magics[type].update(d)
         if not magics[type+'f'].__contains__(key):
+            ##添加 key相关回调函数
             d={key:[]}
             magics[type+'f'].update(d)
         if func!=None:
             magics[type+'f'][key]+=[func]
         return magics[type][key]
-    def addkey2dict(self,magics:Dict,key:str):
+    def addkey2dict(self,magics:Dict,key:str,type:str=None):
         if not magics.__contains__(key):
             d={key:[]}
+            if type!=None and type=="dict":
+                d={key:{}}
             magics.update(d)
         return magics[key]
 ##特殊行处理
@@ -442,7 +449,8 @@ class Magics():
                     for pobj in pvalue:
                         newline=''
                         try:
-                            if line.strip()[3:] in pobj.getIDBptag(pobj):
+                            lin=pobj.getIDBptag(pobj)
+                            if line.lower().strip()[3:] in lin:
                                 newline=pobj.on_IBpCodescanning(pobj,magics,line)
                                 if newline=='':continue
                         except Exception as e:
@@ -475,7 +483,6 @@ class Magics():
                         try:
                             li=pobj.getIDSptag(pobj)
                             if key.lower() in li:
-                                self.kobj._logln(li[0]+":"+value)
                                 newline=pobj.on_ISpCodescanning(pobj,li[0],value,magics,line)
                                 if newline=='':continue
                         except Exception as e:
