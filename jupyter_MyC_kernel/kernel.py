@@ -814,6 +814,9 @@ echo "OK"
             for argument in re.findall(r'(?:[^\s,"]|"(?:\\.|[^"])*")+', termcmd):
                 magics['_st']['term'] += [argument.strip('"')]
         return termcmd
+##//%overwritefile
+##//%file:../src/create_termrunsh.py
+##//%noruncode
     def create_termrunsh(self,execfile,magics):
         fil_ename=execfile
         uname=''
@@ -822,12 +825,18 @@ echo "OK"
             uname=u.read()
         except Exception as e:
             self._logln(""+str(e),3)
-        if self.sys=='Windows':
+        if self.subsys.startswith('MINGW64') or self.subsys.startswith('CYGWIN'):
+            pausestr=self.pausestr
+            termrunsh="\n"+execfile+"\n"+pausestr+"\n"
+            termrunsh_file=self.create_codetemp_file(magics,termrunsh,suffix='.sh')
+            newsrcfilename=termrunsh_file.name
+            fil_ename=newsrcfilename
+        elif self.sys=='Windows' :
             termrunsh="echo off\r\ncls\r\n"+execfile+"\r\npause\r\nexit\r\n"
             termrunsh_file=self.create_codetemp_file(magics,termrunsh,suffix='.bat')
             newsrcfilename=termrunsh_file.name
             fil_ename=newsrcfilename
-        if self.sys=='Linux' or self.subsys.startswith('MINGW64') or self.subsys.startswith('CYGWIN'):
+        elif self.sys=='Linux':
             pausestr=self.pausestr
             termrunsh="\n"+execfile+"\n"+pausestr+"\n"
             termrunsh_file=self.create_codetemp_file(magics,termrunsh,suffix='.sh')
@@ -1413,7 +1422,7 @@ class CKernel(MyKernel):
         # if bcancel_exec:return bcancel_exec,retinfo,magics, code,fil_ename,retstr
         
         if len(self.addkey2dict(magics,'showpid'))>0:
-            self._write_to_stdout("The process PID:"+str(p.pid)+"\n")
+            self._logln("The process PID:"+str(p.pid))
         p.wait_end(magics)
         return_code=p.returncode
         ##代码运行结束
