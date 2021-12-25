@@ -1262,7 +1262,7 @@ class CKernel(MyKernel):
     implementation = 'jupyter-MyC-kernel'
     implementation_version = '1.0'
     language = 'C'
-    language_version = 'C11'
+    language_version = ''
     language_info = {'name': 'text/x-csrc',
                      'mimetype': 'text/x-csrc',
                      'file_extension': '.c'}
