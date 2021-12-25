@@ -24,7 +24,8 @@ My minification kelnel of jupyter
 |[MyNodejs](https://github.com/nufeng1999/jupyter-MyNodejs-kernel)       |[MyPython](https://github.com/nufeng1999/jupyter-MyPython-kernel)       |
 |[MyVala](https://github.com/nufeng1999/jupyter-MyVala-kernel)           |[MyVBScript](https://github.com/nufeng1999/jupyter-MyVBScript-kernel)   |
 |[MyWolframScript](https://github.com/nufeng1999/jupyter-MyWLS-kernel)   |[MyVBScript](https://github.com/nufeng1999/jupyter-MyHtml-kernel)       |  
-|[MyTypeScript](https://github.com/nufeng1999/jupyter-MyTypeScript-kernel)|            |
+|[MyTypeScript](https://github.com/nufeng1999/jupyter-MyTypeScript-kernel)|[MyPowerShell](https://github.com/nufeng1999/jupyter-MyPS-kernel)|
+|[MyBatch](https://github.com/nufeng1999/jupyter-MyBatch-kernel)| |
   
 ----  
 ### Support label  
