@@ -103,7 +103,10 @@ Example3:
 | Define test code area                                                                                                                          |
 | ##test_begin  /  //test_begin                                                                                                                  |
 | ##test_end    /  //test_end                                                                                                                    |
-| test_ Begin and test_ End is the test code，Will not be saved to the file                                                                      |
+| test_Begin and test_End is the test code，Will not be saved to the file                                                                      |
+| \#\#mdf:    /  //mdf:                                                                                                                  |
+| \#\#mdfend  /  //mdfend                                                                                                                    |
+| \#\#mdf and \#\#mdfend  content，Will be saved to the file                                                                      |
 ---
 #### Commands and environment variables
 | label       |           value           | annotation                                                                         |

@@ -1055,7 +1055,7 @@ echo "OK"
             self._logln("No label runprgargs!",2)
         # self._logln(runprgargs[0])
         ##代码运行前
-        p = self.create_jupyter_subprocess([runprg]+ runprgargs,cwd=None,shell=False,env=self.addkey2dict(magics,'env'))
+        p = self.create_jupyter_subprocess([runprg]+ runprgargs,cwd=None,shell=False,env=self.addkey2dict(magics,'env'),magics=magics)
         self.g_rtsps[str(p.pid)]=p
         return_code=p.returncode
         ##代码启动后
@@ -1083,7 +1083,7 @@ echo "OK"
         retinfo=self.get_retinfo()
         retstr=''
         ##调生成文件前接口
-        source_file=self.create_codetemp_file(magics,code,suffix='.sh',magics=magics)
+        source_file=self.create_codetemp_file(magics,code,suffix='.sh')
         newsrcfilename=source_file.name
         fil_ename=newsrcfilename
         return_code=True
