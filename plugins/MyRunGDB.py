@@ -1,11 +1,3 @@
-##//%file:../../jupyter-MyPython-kernel/plugins/MyRunGDB.py
-##//%file:../../jupyter-MyDart-kernel/plugins/MyRunGDB.py
-##//%file:../../jupyter-MyKotlin-kernel/plugins/MyRunGDB.py
-##//%file:../../jupyter-MyGroovy-kernel/plugins/MyRunGDB.py
-##//%file:../../jupyter-MyJava-kernel/plugins/MyRunGDB.py
-##//%file:../../jupyter-MyGjs-kernel/plugins/MyRunGDB.py
-##//%file:../../jupyter-MyVala-kernel/plugins/MyRunGDB.py
-##//%file:../../jupyter-MyNodejs-kernel/plugins/MyRunGDB.py
 from typing import Dict, Tuple, Sequence,List
 from plugins.ISpecialID import IStag,IDtag,IBtag,ITag
 import os

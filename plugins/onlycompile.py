@@ -1,3 +1,4 @@
+## %file:src/onlycompile.py
 from typing import Dict, Tuple, Sequence,List
 from plugins.ISpecialID import IStag,IDtag,IBtag,ITag
 import os
@@ -46,4 +47,5 @@ class Myonlycompile(IBtag):
         return False
     def on_after_completion(self,returncode,execfile,magics)->bool:
         return False
+
     

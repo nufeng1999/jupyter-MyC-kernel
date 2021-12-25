@@ -1,5 +1,4 @@
 #_filter2_magics
-## %file:../src/_filter2_magics.py
 ##########################
 from math import exp
 from queue import Queue
@@ -29,7 +28,6 @@ import time
 import importlib
 import importlib.util
 import inspect
-
 ###############################
 class Magics():
     plugins=None
@@ -116,14 +114,12 @@ class Magics():
                 'main': '',
                 'pubclass': '',
                 'pid': []
-
             }
         self.init_filter(self.magics)
     def _is_specialID(self,line):
         if line.strip().startswith('##%') or line.strip().startswith('//%'):
             return True
         return False
-
     def addkey2dict(self,magics:Dict,key:str):
         if not magics.__contains__(key):
             d={key:[]}
@@ -131,6 +127,11 @@ class Magics():
         return magics[key]
     
 ##内核公共代码部分2
+    def get_outencode(self,magics):
+        encodestr=self.get_magicsSvalue(magics,"outencode")
+        if len(encodestr)<1:
+            encodestr='UTF-8'
+        return encodestr
     def get_magicsSvalue(self,magics:Dict,key:str):
         return self.addmagicsSkey(magics,key)
     def get_magicsBvalue(self,magics:Dict,key:str):
@@ -166,7 +167,6 @@ class Magics():
                 d={key:{}}
             magics.update(d)
         return magics[key]
-
 ##特殊行处理
     def slfn_package(self,key,magics,line):
         qline=self.kobj.replacemany(line,'; ', ';')
@@ -186,7 +186,6 @@ class Magics():
                 pubclass = pubclass[:len(pubclass)-1]
             magics['pubclass'] = pubclass
         return ''
-
 ##关键字相关函数
     def kfn_ldflags(self,key,value,magics,line):
         for flag in value.split():
@@ -353,8 +352,6 @@ class Magics():
                 'pubclass': '',
                 'pid': []
             }
-
-   ## 特殊行(非标签行)处理
     def call_slproc(self,magics,line)->Tuple[bool,str]:
         type='_sline'
         if len(magics[type])<1:return False,line
@@ -362,21 +359,18 @@ class Magics():
         ismatch=False
         try:
             for key,value in magics[type].items():
-               ## startswith
                 if (len(value)>0 and value.strip()=='0' 
                     and (line.strip().startswith(key))
                     and len(magics[type+'f'][key])>0):
                     ismatch=True
                     for kfunc in magics[type+'f'][key]:
                         newline=kfunc(key,magics,newline)
-               ## in
                 elif (len(value)>0 and value.strip()=='1' 
                     and (key in line.strip())
                     and len(magics[type+'f'][key])>0):
                     ismatch=True
                     for kfunc in magics[type+'f'][key]:
                         newline=kfunc(key,magics,newline)
-               ## endswith
                 elif (len(value)>0 and value.strip()=='2' 
                     and (line.strip().endswith(key))
                     and len(magics[type+'f'][key])>0):
@@ -389,7 +383,6 @@ class Magics():
             self.kobj._logln("call_slproc "+str(e),3)
         finally:pass
         return ismatch,newline
-   ## Bool型标签行处理
     def call_btproc(self,magics,line)->bool:
         type='_bt'
         if len(magics[type])<1:return False
@@ -406,7 +399,6 @@ class Magics():
             self.kobj._logln('call_btproc '+str(e),3)
         finally:pass
         return False
-   ## 赋值类型标签行处理
     def call_stproc(self,magics,line,key,value)->str:
         type='_st'
         if len(magics[type])<1:return line
@@ -422,7 +414,6 @@ class Magics():
             self.kobj._logln("call_stproc "+str(e),3)
         finally:pass
         return newline
-
     ##触发接口调用
     def raise_ICodescan(self,magics,code)->Tuple[bool,str]:
         bcancel_exec=False
@@ -442,10 +433,8 @@ class Magics():
                 finally:pass
         return bcancel_exec,newcode
         
-
     def filter(self, code):
         ##魔法字典
-        ## magics={}
         actualCode = ''
         newactualCode = ''
         self.reset_filter()
@@ -456,11 +445,9 @@ class Magics():
         for line in code.splitlines():
             ##扫描源码每行行
             orgline=line
-
             if line==None or line.strip()=='': 
                 actualCode += line + '\n'
                 continue
-           ## 特殊行处理
             ismatch,retstr=self.call_slproc(magics,line)
             if ismatch:
                 if len(retstr)>0:
@@ -468,12 +455,9 @@ class Magics():
                 else:
                     actualCode += line + '\n'
                 continue
-           ## 标签行处理
             if self._is_specialID(line):
-               ## 对Bool型标签进行处理
                 if self.call_btproc(magics,line):continue
  
-               ## 通知(Bool型插件)进行预处理
                 
                 ##通知插件进行预处理
                 ##preprocessor
@@ -496,23 +480,18 @@ class Magics():
                         # if newline!=None and newline!='':
                         #     actualCode += newline + '\n'
                 ##
-
                 ##获得BOOL关键字
                 ##登记Bool型参数和值
-
-               ## 获得赋值型 关键字和其参数
                 findObj= re.search( r':(.*)',line)
                 if not findObj or len(findObj.group(0))<2:
                     continue
                 key, value = line.strip()[3:].split(":", 1)
                 key = key.strip().lower()
                
-               ## 对赋值类型标签进行处理
                 newline=self.call_stproc(magics,line,key,value)
                 if newline!=line and len(newline)>0:
                     actualCode += newline + '\n'
                     continue
-
                ##通知(赋值型插件)进行预处理
                 ##登记参数和值
                 ##处理参数和值 ？？？
@@ -532,44 +511,36 @@ class Magics():
                         finally:pass
                         if newline!=None and newline!='':
                             actualCode += newline + '\n'
-
             else:
-                ## keep lines which did not contain magics
                 actualCode += line + '\n'
         newactualCode=actualCode
-
        ##第二次扫描源代码，进行预处理，比如宏标签处理，模板标签处理
         bcancel_exec,newcode=self.raise_ICodescan(magics,newactualCode)
         if not bcancel_exec:
             newactualCode=newcode
-
        ##第三次扫描源代码，进行代码格式化
             ##扫描源码每行行
             ##清理测试代码 test_begin test_end
             ##清理单行注释 // #
-            ##清理多行注释 /* */ ''' """
         #_filter2_magics_pend
-        if len(self.addkey2dict(magics,'file'))>0 :
-            newactualCode=''
-            for line in actualCode.splitlines():
-                try:
-                    # if len(self.addkey2dict(magics,'test'))<1:
-                    line=self.kobj.cleantestcode(line)
-                    if line=='':continue
-                    ##调用双标签接口
-                    line=self.kobj.callIDplugin(line)
-                    if line=='':continue
-                    if len(self.addkey2dict(magics,'discleannotes'))>0 :continue
-                    line=self.kobj.cleandqm(line)
-                    if line=='':continue
-                    line=self.kobj.cleansqm(line)
-                    if line=='':continue
-                    if self.kobj.cleannotes(line)=='':
-                        continue
-                    else:
-                        newactualCode += line + '\n'
-                except Exception as e:
-                    self.kobj._log(str(e),3)
-
+        newactualCode=''
+        for line in actualCode.splitlines():
+            try:
+                # if len(self.addkey2dict(magics,'test'))<1:
+                if len(self.addkey2dict(magics,'discleannotes'))>0 :continue
+                line=self.kobj.cleantestcode(line)
+                if line=='':continue
+                line=self.kobj.cleandqm(line)
+                if line=='':continue
+                line=self.kobj.cleansqm(line)
+                if line=='':continue
+                line=self.kobj.cleannotes(line)
+                if line=='':continue
+                line=self.kobj.callIDplugin(magics,line)
+                if line=='':continue
+                else:
+                    newactualCode += line + '\n'
+            except Exception as e:
+                self.kobj._log(str(e),3)
        ##返回 magics, newactualCode
         return magics, newactualCode

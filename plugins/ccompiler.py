@@ -1,3 +1,4 @@
+## %file:src/ccompiler.py
 from typing import Dict, Tuple, Sequence,List
 from plugins.ISpecialID import IStag,IDtag,IBtag,ITag
 import os
@@ -50,4 +51,5 @@ class Myccompiler(IStag):
         # self.kobj._write_to_stdout(value+"  exec kcmd...\n")
         magics['ccompiler'] = [value]
         return ''
+
     

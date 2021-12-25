@@ -37,12 +37,9 @@ import importlib.util
 import inspect
 from plugins.ISpecialID import IStag,IDtag,IBtag,ITag,ICodePreproc
 from plugins._filter2_magics import Magics
-##全局函数和变量
 #
 #   MyPython Jupyter Kernel
 #
-###%include:../src/head.py
-###%include:../src/common.py
 class IREPLWrapper(replwrap.REPLWrapper):
     def __init__(self, write_to_stdout, write_to_stderr, read_from_stdin,
                 cmd_or_spawn,replsetip, orig_prompt, prompt_change,
@@ -219,7 +216,7 @@ class MyKernel(Kernel):
                      'nbconvert_exporter': 'python',
                      'file_extension': '.py'}
     banner = "MyPython kernel.\n" \
-             "Uses gcc, compiles in C11, and creates source code files and executables in temporary folder.\n"
+             "Uses , compiles in , and creates source code files and executables in temporary folder.\n"
     kernelinfo="[MyPython]"
     main_head = "\n" \
             "\n" \
@@ -248,7 +245,6 @@ class MyKernel(Kernel):
         self.chk_replexit_thread.start()
         self.init_plugin()
         self.mag=Magics(self,self.plugins,self.ICodePreprocs)
-##核心内变量与属性  
     pausestr='''
 get_char()
 {
@@ -289,7 +285,6 @@ echo "OK"
                 cpstr=cpstr[1:] 
             # self._log(cpstr)
             magics['_st']['joptions'][index+1]=cpstr
-##解析环境变量参数字符串函数
     def resolving_enveqval(self, envstr):
         if envstr is None or len(envstr.strip())<1:
             return os.environ
@@ -306,7 +301,6 @@ echo "OK"
         # for i in range(0,len(env_list),2):
         #     os.environ.setdefault(env_list[i],env_list[i+1])
         return os.environ
-##解析参数字符串函数
     def resolving_eqval2dict(self,argsstr):
         if not argsstr or len(argsstr.strip())<1:
             return None
@@ -320,7 +314,6 @@ echo "OK"
         return env_dict
 ##//%include:../src/_templateHander.py
 ##//%include:../src/_readtemplatefile.py
-##内核公共代码部分2
     def get_outencode(self,magics):
         encodestr=self.get_magicsSvalue(magics,"outencode")
         if len(encodestr)<1:
@@ -361,14 +354,11 @@ echo "OK"
                 d={key:{}}
             magics.update(d)
         return magics[key]
-##内核公共代码部分
     usleep = lambda x: time.sleep(x/1000000.0)
-    ##全部替换our_str字符串里的to_be_replaced为replace_with
     def replacemany(self,our_str, to_be_replaced:str, replace_with:str):
         while (to_be_replaced in our_str):
             our_str = our_str.replace(to_be_replaced, replace_with)
         return our_str
-    ##处理acb=xxx 这样的参数字符串到字典{}里
     def _filter_dict(self,argsstr):
         if not argsstr or len(argsstr.strip())<1:
             return None
@@ -380,7 +370,6 @@ echo "OK"
             li= [i for i in li if i != '']
             env_dict[str(li[0])]=li[1]
         return env_dict
-    ##文件处理器
     def _fileshander(self,files:List,srcfilename,magics)->str:
         index=-1
         fristfile=srcfilename
@@ -407,7 +396,6 @@ echo "OK"
         if line.strip().startswith('##%') or line.strip().startswith('//%'):
             return True
         return False
-##清除注释函数
     def _is_test_begin(self,line):
         if line==None or line=='':return ''
         return line.strip().startswith('##test_begin') or line.strip().startswith('//test_begin')
@@ -447,16 +435,14 @@ echo "OK"
             return line.rstrip().endswith('\'\'\'')
         return False
     
-    ##清除C里的多行注释
     def cleanCdqm(self,code):
         return re.sub(r"/\*.*?\*/", "", code, flags=re.M|re.S)
-    ##清除单行注释
     def cleanCnotes(self,code):
         return re.sub(r"//.*", "", code)
     def cleannotes(self,line):
         ##tmpCode = re.sub(r"//.*", "", line)
         ##tmpCode = re.sub(r"/\*.*?\*/", "", tmpCode, flags=re.M|re.S)
-        return '' if (not self._is_specialID(line)) and (line.lstrip().startswith('## ') or line.lstrip().startswith('//')) else line
+        return '' if (not self._is_specialID(line)) and (line.lstrip().startswith('## ') or line.lstrip().startswith('// ')) else line
     isdqm=False##清除双引号多行注释
     def cleandqmA(self,code):
         return re.sub(r"\"\"\".*?\"\"\"", "", code, flags=re.M|re.S)
@@ -477,7 +463,6 @@ echo "OK"
         line= "" if self.isdqm else line
         return line
     issqm=False
-    ##清除单引号多行注释
     def cleansqmA(self,code):
         return re.sub(r"\'\'\'.*?\'\'\'", "", code, flags=re.M|re.S)
     def cleansqm(self,line):
@@ -496,7 +481,6 @@ echo "OK"
         line= "" if self.issqm else line
         return line
     istestcode=False
-    ##清除测试行里的代码 ##test_begin  ##test_end
     def cleantestcodeA(self,code):
         code=re.sub(r"\/\/test_begin.*?\/\/test_end", "", code, flags=re.M|re.S)
         return re.sub(r"\#\#test_begin.*?\#\#test_end", "", code, flags=re.M|re.S)
@@ -531,8 +515,6 @@ echo "OK"
                         if grtsps[key].child.terminated:
                             pass
                             del grtsps[key]
-                        # else:
-                        #     grtsps[key].write_contents()
             finally:
                 pass
         if len(grtsps)>0: 
@@ -607,11 +589,6 @@ echo "OK"
                 contents=header+base64.encodebytes(contents).decode( errors='ignore')+end
                 mimetype='text/html'
                 metadata = {mimetype:{}}
-                    # 'text/html' : {
-                    # 'width': 640,
-                    # 'height': 480
-                    # }
-                    # }
         except Exception as e:
             self._logln("_write_display_data err "+str(e),3)
             return
@@ -857,9 +834,6 @@ echo "OK"
             for argument in re.findall(r'(?:[^\s,"]|"(?:\\.|[^"])*")+', termcmd):
                 magics['_st']['term'] += [argument.strip('"')]
         return termcmd
-##//%overwritefile
-##//%file:../src/create_termrunsh.py
-##//%noruncode
     def create_termrunsh(self,execfile,magics):
         fil_ename=execfile
         uname=''
@@ -1158,6 +1132,9 @@ echo "OK"
         # self.onkernelshutdown()
         self.cleanup_files()
 #####################################################################
+##接口发现并注册
+##//%test
+##
     ISplugins={"0":[],
          "1":[],
          "2":[],
@@ -1199,7 +1176,6 @@ echo "OK"
          "8":[],
          "9":[]}
     plugins=[ISplugins,IDplugins,IBplugins]
-    # mag=Magics(plugins)
     def pluginRegister(self,obj):
         if obj==None:return
         try:
@@ -1244,13 +1220,13 @@ echo "OK"
                 except Exception as e:
                     pass
                 finally:pass
-    def callIDplugin(self,line):
+    def callIDplugin(self,magics,line):
         newline=line
         for key,value in self.IDplugins.items():
             # print( key +":"+str(len(value))+"\n")
             for obj in value:
                 try:
-                    newline=obj.on_IDpReorgCode(obj,newline)
+                    newline=obj.on_IDpReorgCode(obj,magics,newline)
                     if newline=='':break
                 except Exception as e:
                     pass

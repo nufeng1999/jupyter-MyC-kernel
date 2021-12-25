@@ -1,3 +1,4 @@
+## %file:src/CDnotes.py
 from typing import Dict, Tuple, Sequence,List
 from plugins.ISpecialID import IStag,IDtag,IBtag,ITag
 from jupyter_MyC_kernel.kernel import CKernel
@@ -25,7 +26,7 @@ class MyCDnotes(IDtag):
         return
     def on_shutdown(self, restart):
         return
-    def on_IDpReorgCode(self,line) -> str:
+    def on_IDpReorgCode(self,magics,line) -> str:
         # self.kobj._write_to_stdout(line+" hon_IDpReorgCode\n")
         #  self.addkey2dict(magics,'dartcmd')
         return self.cleancqm(self,line)

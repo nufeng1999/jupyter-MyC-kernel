@@ -1,3 +1,4 @@
+## %file:src/define.py
 from jinja2 import Environment, PackageLoader, select_autoescape,Template
 from typing import List,Dict, Tuple, Sequence
 from plugins.ISpecialID import IStag,IDtag,IBtag,ITag
@@ -64,6 +65,8 @@ class Mydefine(IStag):
         return False
     def on_after_completion(self,returncode,execfile,magics)->bool:
         return False
+
+
     def loadmacrofile(self,file:str):
         pass
     def delmacro(self,magics,name:str):
@@ -98,3 +101,4 @@ class Mydefine(IStag):
         # else:
         magics['define'][name]=content        
         return True
+
