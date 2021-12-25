@@ -120,4 +120,5 @@ Example3:
 | onlycsfile  |      | Generate code files only   |
 | onlyruncmd  |      | Run the label command only |
 | onlycompile |      | Compile code content only  |
+### License
 [MIT](LICENSE.txt)

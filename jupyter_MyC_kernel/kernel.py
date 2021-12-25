@@ -119,12 +119,15 @@ class RealTimeSubprocess(subprocess.Popen):
     kobj=None
     def setkobj(self,k=None):
         self.kobj=k
-    def __init__(self, cmd, write_to_stdout, write_to_stderr, read_from_stdin,cwd=None,shell=False,env=None,kobj=None):
+    def __init__(self, cmd, write_to_stdout, write_to_stderr, read_from_stdin,
+        cwd=None,shell=False,env=None,kobj=None,outencode='UTF-8'):
+        self.outencode=outencode
         self.kobj=kobj
         self._write_to_stdout = write_to_stdout
         self._write_to_stderr = write_to_stderr
         self._read_from_stdin = read_from_stdin
         if env!=None and len(env)<1:env=None
+        
         super().__init__(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE,
                             bufsize=0,cwd=cwd,shell=shell,env=env)
         self._stdout_queue = Queue()
@@ -158,9 +161,14 @@ class RealTimeSubprocess(subprocess.Popen):
         if stdout_contents:
             if self.kobj.get_magicsSvalue(magics,"outputtype").startswith("image"):
                 self._write_to_stdout(stdout_contents,magics)
+                ##reset outputtype
                 magics['_st']["outputtype"]="text/plain"
                 return
-            contents = stdout_contents.decode('UTF-8', errors='ignore')
+            contents=''
+            if self.outencode=='UTF-8':
+                contents = stdout_contents.decode('UTF-8', errors='ignore')
+            else:
+                contents = stdout_contents.decode(self.outencode, errors='ignore')
             # if there is input request, make output and then
             # ask frontend for input
             start = contents.find(self.__class__.inputRequest)
@@ -187,6 +195,7 @@ class RealTimeSubprocess(subprocess.Popen):
             self._write_to_stdout("The process end:"+str(self.pid)+"\n",magics)
         else:
             self.kobj._logln("The process end:"+str(self.pid))
+        ############################################
         # self.write_contents(magics)
         # wait for threads to finish, so output is always shown
         self._stdout_thread.join()
@@ -530,7 +539,10 @@ echo "OK"
         self.files.append(file.name)
         return file
     def create_codetemp_file(self,magics,code,suffix):
-        source_file=self.new_temp_file(suffix=suffix,dir=os.path.abspath(''),encoding="UTF-8")
+        encodestr="UTF-8"
+        if suffix.strip().lower().endswith(".bat") or suffix.strip().lower().endswith(".ps1"):
+            encodestr="GBK"
+        source_file=self.new_temp_file(suffix=suffix,dir=os.path.abspath(''),encoding=encodestr)
         magics['codefilename']=source_file.name
         with  source_file:
             source_file.write(code)
@@ -763,7 +775,7 @@ echo "OK"
         except Exception as e:
             self._log("Executable send_cmd error! "+str(e)+"\n")
         return
-    def create_jupyter_subprocess(self, cmd,cwd=None,shell=False,env=None,magics=None):
+    def create_jupyter_subprocess(self, cmd,cwd=None,shell=False,env=None,magics=None,outencode='UTF-8'):
         try:
             if env==None or len(env)<1:
                 env=os.environ
@@ -787,7 +799,7 @@ echo "OK"
             return RealTimeSubprocess(cmd,
                                   self._write_to_stdout,
                                   self._write_to_stderr,
-                                  self._read_from_stdin,cwd,shell,env,self)
+                                  self._read_from_stdin,cwd,shell,env,self,outencode=outencode)
         except Exception as e:
             self._write_to_stdout("RealTimeSubprocess err:"+str(e))
             raise
@@ -807,6 +819,8 @@ echo "OK"
                 termcmd='mintty "/usr/bin/bash" --login'
             if self.sys=='Linux':
                 termcmd='gnome-terminal'
+            elif self.sys=='Windows':
+                termcmd='c:\\Windows\\System32\\cmd.exe /c start'
         except Exception as e:
             self._logln(""+str(e),3)
         if len(termcmd)>1:
@@ -833,6 +847,8 @@ echo "OK"
             fil_ename=newsrcfilename
         elif self.sys=='Windows' :
             termrunsh="echo off\r\ncls\r\n"+execfile+"\r\npause\r\nexit\r\n"
+            if execfile.strip().lower().endswith(".bat"):
+                termrunsh="echo off\r\ncls\r\ncall "+execfile+"\r\npause\r\nexit\r\n"
             termrunsh_file=self.create_codetemp_file(magics,termrunsh,suffix='.bat')
             newsrcfilename=termrunsh_file.name
             fil_ename=newsrcfilename
@@ -843,7 +859,7 @@ echo "OK"
             newsrcfilename=termrunsh_file.name
             fil_ename=newsrcfilename
         else:
-            pass
+            self._logln("Cannot create terminal!",3)
         self._logln(fil_ename)
         os.chmod(newsrcfilename,stat.S_IRWXU+stat.S_IRGRP+stat.S_IXGRP+stat.S_IXOTH)
         return fil_ename
