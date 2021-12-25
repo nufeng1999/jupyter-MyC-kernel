@@ -37,6 +37,7 @@ import importlib.util
 import inspect
 from plugins.ISpecialID import IStag,IDtag,IBtag,ITag,ICodePreproc
 from plugins._filter2_magics import Magics
+##全局函数和变量
 #
 #   MyPython Jupyter Kernel
 #
@@ -247,6 +248,7 @@ class MyKernel(Kernel):
         self.chk_replexit_thread.start()
         self.init_plugin()
         self.mag=Magics(self,self.plugins,self.ICodePreprocs)
+##核心内变量与属性  
     pausestr='''
 get_char()
 {
@@ -287,6 +289,7 @@ echo "OK"
                 cpstr=cpstr[1:] 
             # self._log(cpstr)
             magics['_st']['joptions'][index+1]=cpstr
+##解析环境变量参数字符串函数
     def resolving_enveqval(self, envstr):
         if envstr is None or len(envstr.strip())<1:
             return os.environ
@@ -303,6 +306,7 @@ echo "OK"
         # for i in range(0,len(env_list),2):
         #     os.environ.setdefault(env_list[i],env_list[i+1])
         return os.environ
+##解析参数字符串函数
     def resolving_eqval2dict(self,argsstr):
         if not argsstr or len(argsstr.strip())<1:
             return None
@@ -317,6 +321,11 @@ echo "OK"
 ##//%include:../src/_templateHander.py
 ##//%include:../src/_readtemplatefile.py
 ##内核公共代码部分2
+    def get_outencode(self,magics):
+        encodestr=self.get_magicsSvalue(magics,"outencode")
+        if len(encodestr)<1:
+            encodestr='UTF-8'
+        return encodestr
     def get_magicsSvalue(self,magics:Dict,key:str):
         return self.addmagicsSkey(magics,key)
     def get_magicsBvalue(self,magics:Dict,key:str):
@@ -398,6 +407,7 @@ echo "OK"
         if line.strip().startswith('##%') or line.strip().startswith('//%'):
             return True
         return False
+##清除注释函数
     def _is_test_begin(self,line):
         if line==None or line=='':return ''
         return line.strip().startswith('##test_begin') or line.strip().startswith('//test_begin')
@@ -436,16 +446,22 @@ echo "OK"
         if self.issqm:
             return line.rstrip().endswith('\'\'\'')
         return False
+    
+    ##清除C里的多行注释
     def cleanCdqm(self,code):
         return re.sub(r"/\*.*?\*/", "", code, flags=re.M|re.S)
+    ##清除单行注释
     def cleanCnotes(self,code):
         return re.sub(r"//.*", "", code)
     def cleannotes(self,line):
+        ##tmpCode = re.sub(r"//.*", "", line)
+        ##tmpCode = re.sub(r"/\*.*?\*/", "", tmpCode, flags=re.M|re.S)
         return '' if (not self._is_specialID(line)) and (line.lstrip().startswith('## ') or line.lstrip().startswith('//')) else line
     isdqm=False##清除双引号多行注释
     def cleandqmA(self,code):
         return re.sub(r"\"\"\".*?\"\"\"", "", code, flags=re.M|re.S)
     def cleandqm(self,line):
+        ##tmpCode = re.sub(r"\"\"\".*?\"\"\"", "", line, flags=re.M|re.S)
         if not self.isdqm:
             istb=self._is_dqm_begin(line)
             if istb: 
@@ -461,6 +477,7 @@ echo "OK"
         line= "" if self.isdqm else line
         return line
     issqm=False
+    ##清除单引号多行注释
     def cleansqmA(self,code):
         return re.sub(r"\'\'\'.*?\'\'\'", "", code, flags=re.M|re.S)
     def cleansqm(self,line):
@@ -479,6 +496,7 @@ echo "OK"
         line= "" if self.issqm else line
         return line
     istestcode=False
+    ##清除测试行里的代码 ##test_begin  ##test_end
     def cleantestcodeA(self,code):
         code=re.sub(r"\/\/test_begin.*?\/\/test_end", "", code, flags=re.M|re.S)
         return re.sub(r"\#\#test_begin.*?\#\#test_end", "", code, flags=re.M|re.S)
@@ -497,6 +515,7 @@ echo "OK"
             return ''
         line= "" if self.istestcode else line
         return line
+    
     def repl_listpid(self,cmd=None):
         if len(self.g_rtsps)>0: 
             self._write_to_stdout("--------All replpid--------\n")
@@ -539,8 +558,13 @@ echo "OK"
         self.files.append(file.name)
         return file
     def create_codetemp_file(self,magics,code,suffix):
-        encodestr="UTF-8"
-        if suffix.strip().lower().endswith(".bat") or suffix.strip().lower().endswith(".ps1"):
+        encodestr='UTF-8'
+        if magics!=None:
+            encodestr=self.get_magicsSvalue(magics,"fileencode")
+        if len(encodestr)<1:
+            encodestr='UTF-8'
+        if (suffix.strip().lower().endswith(".bat") or
+            (suffix.strip().lower().endswith(".ps1") and self.sys=="Windows")):
             encodestr="GBK"
         source_file=self.new_temp_file(suffix=suffix,dir=os.path.abspath(''),encoding=encodestr)
         magics['codefilename']=source_file.name
@@ -774,8 +798,9 @@ echo "OK"
             self.g_rtsps[pid]._write_to_stdout(cmd)
         except Exception as e:
             self._log("Executable send_cmd error! "+str(e)+"\n")
+    
         return
-    def create_jupyter_subprocess(self, cmd,cwd=None,shell=False,env=None,magics=None,outencode='UTF-8'):
+    def create_jupyter_subprocess(self, cmd,cwd=None,shell=False,env=None,magics=None,outencode=None):
         try:
             if env==None or len(env)<1:
                 env=os.environ
@@ -796,6 +821,10 @@ echo "OK"
             cstr=''
             for x in cmd: cstr+=x+" "
             self._logln(cstr)
+            if(outencode==None or len(outencode)<0):
+                outencode=self.get_outencode(magics)
+            if(len(outencode)<0):
+                outencode='UTF-8'
             return RealTimeSubprocess(cmd,
                                   self._write_to_stdout,
                                   self._write_to_stderr,
@@ -1036,8 +1065,11 @@ echo "OK"
         except Exception as e:
             self._log(""+str(e),3)
         return self.get_retinfo()
+##do_runcode
     def dor_runcode(self,return_code,fil_ename,magics,code, silent, store_history=True,
                     user_expressions=None, allow_stdin=True):    
+        ##runprg
+        ##runprgargs
         return_code=return_code
         fil_ename=fil_ename
         bcancel_exec=False
@@ -1047,33 +1079,47 @@ echo "OK"
         runprgargs=self.get_magicsSvalue(magics,'runprgargs')
         if (len(runprgargs)<1):
             self._logln("No label runprgargs!",2)
-        self._logln(runprgargs[0])
+        # self._logln(runprgargs[0])
+        ##代码运行前
         p = self.create_jupyter_subprocess([runprg]+ runprgargs,cwd=None,shell=False,env=self.addkey2dict(magics,'env'))
         self.g_rtsps[str(p.pid)]=p
         return_code=p.returncode
+        ##代码启动后
         bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,3,2)
+        
         if len(self.addkey2dict(magics,'showpid'))>0:
             self._logln("The process PID:"+str(p.pid))
         return_code=p.wait_end(magics)
         # self._logln("The process end:"+str(p.pid))
+        ##
+        ##调用接口
         # return_code=p.returncode
+        ##代码运行结束
         if p.returncode != 0:
             self._logln("Executable exited with code {}".format(p.returncode),2)
         return bcancel_exec,retinfo,magics, code,fil_ename,retstr
+##do_create_codefile
     def dor_create_codefile(self,magics,code, silent, store_history=True,
                     user_expressions=None, allow_stdin=True):    
+        ##runprg
+        ##runprgargs
         return_code=0
         fil_ename=''
         bcancel_exec=False
         retinfo=self.get_retinfo()
         retstr=''
-        source_file=self.create_codetemp_file(magics,code,suffix='.sh')
+        ##调生成文件前接口
+        source_file=self.create_codetemp_file(magics,code,suffix='.sh',magics=magics)
         newsrcfilename=source_file.name
         fil_ename=newsrcfilename
         return_code=True
+        
         return bcancel_exec,retinfo,magics, code,fil_ename,retstr
+##do_preexecute
     def dor_preexecute(self,code,magics,silent, store_history=True,
                 user_expressions=None, allow_stdin=False):        
+        ##runprg
+        ##runprgargs
         bcancel_exec=False
         retinfo=self.get_retinfo()
         return bcancel_exec,retinfo,magics, code

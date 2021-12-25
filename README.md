@@ -59,6 +59,7 @@ Example3:
 | runprg:     |            | The code content will be run by the execution file specified by runprg                                           |
 | runprgargs: |            | runprg Parameters of the specified executable ,You can put the name specified by file into the parameter string. |
 | outputtype: | text/plain | mime-type                                                                                                        |
+| outencode:  | UTF-8      | set stdout encode                                                                                                |
 ---
 #### Interactive running code
 | label         | value | annotation                                                                                  |
@@ -76,9 +77,10 @@ Example3:
 ---
 #### Save code and include file
 | label         | value | annotation                                              |
-| :------------ | :---: | :-------------------------------------------------- |
+| :------------ | :---: | :--------------------------------------------------     |
 | noruncode     |      | Do not run code content                                  |
 | overwritefile |      | Overwrite existing files                                 |
+| fileencode:   | UTF-8| code file encode                                         |
 | file:         |      | The code can be saved to multiple files                  |
 | fndict:       |      | Dictionary for file names                                |
 | filefordict:  |      | Replace $key of fndict with a string from the fndict when save file |
