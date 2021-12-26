@@ -44,77 +44,10 @@ class Magics():
         self.ISplugins=self.plugins[0]
         self.IDplugins=self.plugins[1]
         self.IBplugins=self.plugins[2]
-        self.magics = {
-            ##magics_define
-              ##
-                '_sline':{
-                  'package':'0',
-                  'public':'0'
-                },
-                '_slinef':{
-                  'package':[],
-                  'public':[]
-                },
-                '_bt':{
-                'repllistpid':'',
-                'runinterm':'',
-                'replcmdmode':'',
-                'replprompt':''
-                },
-                '_st':{
-                'ldflags':[],
-                'cflags':[],
-                'coptions':[],
-                'joptions':[],
-                'runmode':[],
-                'replsetip':[],
-                'replchildpid':"0",
-                'pidcmd':[],
-                'term':[],
-                'fileencode':'UTF-8',
-                'outencode':'UTF-8',
-                'outputtype':'text/plain',
-                'log':[],
-                'loadurl':[],
-                'runprg':[],
-                'runprgargs':[],
-                'args':[]
-                },
-                '_dt':{},
-                '_btf':{
-                'repllistpid':[self.kobj.repl_listpid],
-                'runinterm':[],
-                'replcmdmode':[],
-                'replprompt':[]
-                },
-                '_stf':{
-                'ldflags':[],
-                'cflags':[],
-                'coptions':[],
-                'joptions':[],
-                'runmode':[],
-                'replsetip':[],
-                'replchildpid':[],
-                'pidcmd':[],
-                'term':[],
-                'fileencode':[],
-                'outencode':[],
-                'outputtype':[],
-                'log':[],
-                'loadurl':[],
-                'runprg':[],
-                'runprgargs':[],
-                'args':[]
-                },
-                '_dtf':{},
-                'codefilename':'',
-                'classname':'',
-                'dlrun': [],
-                'package': '',
-                'main': '',
-                'pubclass': '',
-                'pid': []
-            }
+        self.reset_filter()
+        # self.magics = {
+        #     ##%include:../src/magics_define.py
+        #     }
         self.init_filter(self.magics)
     def _is_specialID(self,line):
         if line.strip().startswith('##%') or line.strip().startswith('//%'):
@@ -126,7 +59,6 @@ class Magics():
             magics.update(d)
         return magics[key]
     
-##内核公共代码部分2
     def get_outencode(self,magics):
         encodestr=self.get_magicsSvalue(magics,"outencode")
         if len(encodestr)<1:
