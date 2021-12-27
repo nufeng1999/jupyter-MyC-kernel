@@ -1,4 +1,3 @@
-## %file:src/fileforlist.py
 from typing import Dict, Tuple, Sequence,List
 from plugins.ISpecialID import IStag,IDtag,IBtag,ITag
 import re
@@ -77,7 +76,6 @@ class MyFileforlist(IStag):
         else:
             magics[str(key)] +=['newfile']
         return ''
-
     def _fileshander(self,files:List,srcfilename,magics)->str:
         index=-1
         fristfile=srcfilename

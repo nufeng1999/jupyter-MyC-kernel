@@ -1,4 +1,3 @@
-## %file:src/kcommand.py
 from typing import Dict, Tuple, Sequence,List
 from plugins.ISpecialID import IStag,IDtag,IBtag,ITag
 import os
@@ -59,5 +58,4 @@ class Mykcommand(IStag):
                 self.kobj._log('{key}:{value}'.format(key = key, value = value))
             # self.kobj._log(magics +"\n")
         return ''
-
     

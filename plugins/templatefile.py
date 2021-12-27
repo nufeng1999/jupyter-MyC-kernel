@@ -1,4 +1,3 @@
-## %file:src/templatefile.py
 import typing as t
 from typing import Dict, Tuple, Sequence,List
 from plugins.ISpecialID import IStag,IDtag,IBtag,ITag
@@ -66,7 +65,6 @@ class MyTemplatefile(IStag):
         if len(magics['templatefile'])>0:
             newline=self.readtemplatefile(self,templatefile,index1,templateargsdict)
         return newline + '\n'
-
     def readtemplatefile(self,filename,spacecount=0,*args: t.Any, **kwargs: t.Any):
         filecode=''
         newfilecode=''
@@ -76,7 +74,6 @@ class MyTemplatefile(IStag):
             return filecode;
         template = self.jinja2_env.get_template(filenm)
         filecode=template.render(*args,**kwargs)
-
         for line in filecode.splitlines():
             if len(line)>0:
                 for t in line:

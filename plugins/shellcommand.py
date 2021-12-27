@@ -1,4 +1,3 @@
-## %file:src/shellcommand.py
 from typing import Dict, Tuple, Sequence,List
 from plugins.ISpecialID import IStag,IDtag,IBtag,ITag
 import os
@@ -58,5 +57,4 @@ class MyShellcommand(IStag):
         except Exception as e:
             self.kobj._logln("commandhander  "+str(e))
         return ''
-
     

@@ -1,4 +1,3 @@
-## %file:src/filedict.py
 from typing import Dict, Tuple, Sequence,List
 from plugins.ISpecialID import IStag,IDtag,IBtag,ITag
 import re

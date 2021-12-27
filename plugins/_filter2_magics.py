@@ -127,6 +127,14 @@ class Magics():
         for flag in value.split():
             magics['_st'][key] += [flag]
         return ''
+    def kfn_switches(self,key,value,magics,line):
+        for flag in value.split():
+            magics['_st'][key] += [flag]
+        return ''
+    def kfn_options(self,key,value,magics,line):
+        for flag in value.split():
+            magics['_st'][key] += [flag]
+        return ''
     def kfn_coptions(self,key,value,magics,line):
         for flag in value.split():
             magics['_st'][key] += [flag]
@@ -197,6 +205,10 @@ class Magics():
         self.addmagicsSLkey(magics,'public','0',self.slfn_public)
         self.addmagicsSkey(magics,'ldflags',self.kfn_ldflags)
         self.addmagicsSkey(magics,'cflags',self.kfn_cflags)
+        
+        self.addmagicsSkey(magics,'switches',self.kfn_switches)
+        self.addmagicsSkey(magics,'options',self.kfn_options)
+        
         self.addmagicsSkey(magics,'coptions',self.kfn_coptions)
         self.addmagicsSkey(magics,'joptions',self.kfn_joptions)
         self.addmagicsSkey(magics,'runmode',self.kfn_runmode)
@@ -233,6 +245,8 @@ class Magics():
                 '_st':{
                 'ldflags':[],
                 'cflags':[],
+                'switches':[],
+                'options':[],
                 'coptions':[],
                 'joptions':[],
                 'runmode':[],
@@ -259,6 +273,8 @@ class Magics():
                 '_stf':{
                 'ldflags':[],
                 'cflags':[],
+                'switches':[],
+                'options':[],
                 'coptions':[],
                 'joptions':[],
                 'runmode':[],
