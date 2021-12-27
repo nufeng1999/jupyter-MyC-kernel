@@ -292,6 +292,7 @@ class Magics():
                 'args':[]
                 },
                 '_dtf':{},
+                'status':'',
                 'codefilename':'',
                 'classname':'',
                 'dlrun': [],

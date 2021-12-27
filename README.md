@@ -51,11 +51,13 @@ Example3:
   
 ----
 #### Compile and run code
-| label       |   value   | annotation                                                                                                       |
-| :------------ | :----------: | :----------------------------------------------------------------------------------------------------------------- |
+| label       |   value    | annotation                                                                                                       |
+| :---------- | :--------: | :--------------------------------------------------------------------------------------------------------------- |
 | cflags:     |            | Specifies the compilation parameters for C language compilation                                                  |
 | ldflags:    |            | Specify the link parameters for C language connection                                                            |
 | args:       |            | Specifies the parameters for the code file runtime                                                               |
+| switches    |            | Specifies the parameters for Swiftc                                                                              |
+| options     |            | Specifies the parameters for Perl,Lua                                                                            |
 | coptions:   |            | Code compilation time parameters of JVM platform                                                                 |
 | joptions:   |            | Code runtime parameters for the JVM platform                                                                     |
 | runprg:     |            | The code content will be run by the execution file specified by runprg                                           |

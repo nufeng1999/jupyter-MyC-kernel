@@ -781,7 +781,7 @@ echo "OK"
         try:
             if env==None or len(env)<1:
                 env=os.environ
-            if magics!=None and len(self.addmagicsBkey(magics,'runinterm'))>0:
+            if magics!=None and magics['status']=='' and len(self.addmagicsBkey(magics,'runinterm'))>0:
                 self.inittermcmd(magics)
                 if len(magics['_st']['term'])<1:
                     self._logln("no term！",2)
@@ -1329,6 +1329,7 @@ class CKernel(MyKernel):
     def _exec_gcc_(self,source_filename,magics):
         self._logln('Generating executable file')
         with self.new_temp_file(suffix='.out') as binary_file:
+            magics['status']='compiling'
             p,outfile,gcccmd = self.compile_with_gcc(
                 source_filename, 
                 binary_file.name,
@@ -1338,6 +1339,7 @@ class CKernel(MyKernel):
                 magics=magics)
             returncode=p.wait_end(magics)
             p.write_contents()
+            magics['status']=''
             binary_file.name=os.path.join(os.path.abspath(''),outfile)
             if returncode != 0:  # Compilation failed
                 self._logln(''.join((str(s) for s in gcccmd))+"\n",3)
