@@ -17,6 +17,7 @@ cd jupyter_MyC_kernel && python3 install_MyC_kernel --user
 # now you can start the notebook
 jupyter notebook
 ```
+This is a very simplified exploration and development work, which is suitable for beginners and experts, especially for the development of computer system maintenance code.  
 My minification kelnel of jupyter
 |                   |                 |
 | :--------------------------------------------------------------------- | :--------------------------------------------------------------------- |
@@ -69,6 +70,8 @@ Example3:
 | runprgargs: |            | runprg Parameters of the specified executable ,You can put the name specified by file into the parameter string. |
 | outputtype: | text/plain | mime-type                                                                                                        |
 | outencode:  | UTF-8      | set stdout encode                                                                                                |
+| runinterm   |            | Run the code in the terminal                                                                                     |
+| term:       |gnome-terminal| linux:gnome-terminal windows:c:\Windows\\System32\cmd.exe /c start                                    |
 ---
 #### Interactive running code
 | label         | value | annotation                                                                                  |
