@@ -1,4 +1,4 @@
-![](https://camo.githubusercontent.com/44d4e0773057b511ca12262618366367d298a303a47878753d56623e431d1865/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f4a7570797465722d4b65726e656c2d677265656e3f6c696e6b3d68747470733a2f2f6a7570797465722e6f72672f266c696e6b3d68747470733a2f2f6769746875622e636f6d2f6a7570797465722f6a7570797465722f77696b692f4a7570797465722d6b65726e656c73) ![](https://img.shields.io/badge/MyC-Kernel-orange) ![](https://img.shields.io/github/watchers/nufeng1999/jupyter-MyC-kernel) <img alt="ViewCount" src="https://views.whatilearened.today/views/github/nufeng1999/jupyter-MyC-kernel.svg">
+![](https://img.shields.io/badge/Jupyter-Kernel-green?link=https://jupyter.org/&link=https://github.com/jupyter/jupyter/wiki/Jupyter-kernels) ![](https://img.shields.io/badge/MyC-Kernel-orange) ![](https://img.shields.io/github/watchers/nufeng1999/jupyter-MyC-kernel) <img alt="ViewCount" src="https://views.whatilearened.today/views/github/nufeng1999/jupyter-MyC-kernel.svg">
     <a href="https://github.com/nufeng1999/jupyter-MyC-kernel"><img alt="GitHub Clones" src="https://img.shields.io/badge/dynamic/json?color=success&label=Clone&query=count&url=https://raw.githubusercontent.com/nufeng1999/jupyter-MyC-kernel/master/clone.json&logo=github"></a>
 # MyC kernel for Jupyter  
   
@@ -30,7 +30,9 @@ My minification kelnel of jupyter
 |[MyTypeScript](https://github.com/nufeng1999/jupyter-MyTypeScript-kernel)|[MyPowerShell](https://github.com/nufeng1999/jupyter-MyPS-kernel)      |
 |[MyBatch](https://github.com/nufeng1999/jupyter-MyBatch-kernel)         |[MyLua](https://github.com/nufeng1999/jupyter-MyLua-kernel)             |
 |[MyPerl](https://github.com/nufeng1999/jupyter-MyPerl-kernel)           |[MyLua](https://github.com/nufeng1999/jupyter-MySwift-kernel)           |
-|[MyPHP](https://github.com/nufeng1999/jupyter-MyPHP-kernel)             |[MyLua](https://github.com/nufeng1999/jupyter-MyR-kernel)               |
+|[MyPHP](https://github.com/nufeng1999/jupyter-MyPHP-kernel)             |[MyR](https://github.com/nufeng1999/jupyter-MyR-kernel)                 |
+|[MyMake](https://github.com/nufeng1999/jupyter-MyMake-kernel)           |[MyRust](https://github.com/nufeng1999/jupyter-MyRust-kernel)           |
+|[MyRuby](https://github.com/nufeng1999/jupyter-MyRuby-kernel)           |[MyTcl](https://github.com/nufeng1999/jupyter-MyTcl-kernel)             |
   
 ----  
 ### Support label  
