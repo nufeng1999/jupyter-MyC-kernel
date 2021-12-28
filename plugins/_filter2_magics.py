@@ -178,6 +178,9 @@ class Magics():
     def kfn_outputtype(self,key,value,magics,line):
         magics['_st']['outputtype']=value.strip()
         return ''
+    def kfn_cwd(self,key,value,magics,line):
+        magics['_st']['cwd'] = value.strip()
+        return ''
     def kfn_log(self,key,value,magics,line):
         magics['_st']['log'] = value.strip()
         self.kobj._loglevel= value.strip()
@@ -219,6 +222,8 @@ class Magics():
         self.addmagicsSkey(magics,'outputtype',self.kfn_outputtype)
         self.addmagicsSkey(magics,'fileencode',self.kfn_fileencode)
         self.addmagicsSkey(magics,'outencode',self.kfn_outencode)
+        
+        self.addmagicsSkey(magics,'cwd',self.kfn_cwd)
         self.addmagicsSkey(magics,'log',self.kfn_log)
         self.addmagicsSkey(magics,'loadurl',self.kfn_loadurl)
         self.addmagicsSkey(magics,'runprg',self.kfn_runprg)
