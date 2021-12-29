@@ -395,10 +395,10 @@ class MyKernel(Kernel):
         return False
     def _is_test_begin(self,line):
         if line==None or line=='':return ''
-        return line.strip().startswith('##test_begin') or line.strip().startswith('//test_begin')
+        return line.strip().startswith('') or line.strip().startswith('')
     def _is_test_end(self,line):
         if line==None or line=='':return ''
-        return line.strip().startswith('##test_end') or line.strip().startswith('//test_end')
+        return line.strip().startswith('') or line.strip().startswith('')
     def _is_dqm_begin(self,line):
         if line==None or line=='':return ''
         line=self.replacemany(line.strip(),(' '),'')
@@ -481,6 +481,11 @@ class MyKernel(Kernel):
     def cleantestcodeA(self,code):
         code=re.sub(r"\/\/test_begin.*?\/\/test_end", "", code, flags=re.M|re.S)
         return re.sub(r"\#\#test_begin.*?\#\#test_end", "", code, flags=re.M|re.S)
+    def cleantestcodeB(self,code):
+        code=re.sub(r"\/\/test_begin", "", code, flags=re.M|re.S)
+        code=re.sub(r"\/\/test_end", "", code, flags=re.M|re.S)
+        code=re.sub(r"\#\#test_begin", "", code, flags=re.M|re.S)
+        return re.sub(r"\#\#test_end", "", code, flags=re.M|re.S)
     def cleantestcode(self,line):
         if not self.istestcode:
             istb=self._is_test_begin(line)

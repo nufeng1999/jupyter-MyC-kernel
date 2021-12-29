@@ -73,6 +73,7 @@ Example3:
 | runinterm   |            | Run the code in the terminal                                                                                     |
 | term:       |gnome-terminal| linux:gnome-terminal windows:c:\Windows\\System32\cmd.exe /c start                                             |
 | cwd :       |            | The working directory in which the program runs                                                                  |
+| cleartest   |            | clear test code                                                                                                  |
 ---
 #### Interactive running code
 | label         | value  | annotation                                                                                  |
@@ -114,9 +115,10 @@ Example3:
 | \#\#jj2_end   or  //jj2_end                                                                                                                    |
 | Put template code between jj2_begin and jj2__end ，jj2_begin Followed by parameters example: name='jinja2 content'.example: jj2_begin:name=www |
 | Define test code area                                                                                                                          |
-| ##test_begin  /  //test_begin                                                                                                                  |
-| ##test_end    /  //test_end                                                                                                                    |
+|   /                                                                                                                    |
+|     /                                                                                                                      |
 | test_Begin and test_End is the test code，Will not be saved to the file                                                                        |
+| ##%cleartest clear test code                                                                       |
 | \#\#mdf:    /  //mdf:                                                                                                                          |
 | \#\#mdfend  /  //mdfend                                                                                                                        |
 | \#\#mdf and \#\#mdfend  content，Will be saved to the file                                                                                     |

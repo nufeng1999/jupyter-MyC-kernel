@@ -1,4 +1,3 @@
-#_filter2_magics
 ##########################
 from math import exp
 from queue import Queue
@@ -99,7 +98,6 @@ class Magics():
                 d={key:{}}
             magics.update(d)
         return magics[key]
-##特殊行处理
     def slfn_package(self,key,magics,line):
         qline=self.kobj.replacemany(line,'; ', ';')
         qline=self.kobj.replacemany(qline,' ;', ';')
@@ -118,7 +116,6 @@ class Magics():
                 pubclass = pubclass[:len(pubclass)-1]
             magics['pubclass'] = pubclass
         return ''
-##关键字相关函数
     def kfn_ldflags(self,key,value,magics,line):
         for flag in value.split():
             magics['_st'][key] += [flag]
@@ -231,7 +228,6 @@ class Magics():
         self.addmagicsSkey(magics,'args',self.kfn_args)
     def reset_filter(self):
         self.magics = {
-            ##magics_define
               ##
                 '_sline':{
                   'package':'0',
@@ -242,10 +238,12 @@ class Magics():
                   'public':[]
                 },
                 '_bt':{
+                'cleartest':'',
                 'repllistpid':'',
                 'runinterm':'',
                 'replcmdmode':'',
-                'replprompt':''
+                'replprompt':'',
+                'discleannotes':''
                 },
                 '_st':{
                 'ldflags':[],
@@ -262,6 +260,7 @@ class Magics():
                 'fileencode':'UTF-8',
                 'outencode':'UTF-8',
                 'outputtype':'text/plain',
+                'cwd':'',
                 'log':[],
                 'loadurl':[],
                 'runprg':[],
@@ -270,10 +269,12 @@ class Magics():
                 },
                 '_dt':{},
                 '_btf':{
+                'cleartest':[],
                 'repllistpid':[self.kobj.repl_listpid],
                 'runinterm':[],
                 'replcmdmode':[],
-                'replprompt':[]
+                'replprompt':[],
+                'discleannotes':[]
                 },
                 '_stf':{
                 'ldflags':[],
@@ -290,6 +291,7 @@ class Magics():
                 'fileencode':[],
                 'outencode':[],
                 'outputtype':[],
+                'cwd':[],
                 'log':[],
                 'loadurl':[],
                 'runprg':[],
@@ -368,7 +370,6 @@ class Magics():
             self.kobj._logln("call_stproc "+str(e),3)
         finally:pass
         return newline
-    ##触发接口调用
     def raise_ICodescan(self,magics,code)->Tuple[bool,str]:
         bcancel_exec=False
         bretcancel_exec=False
@@ -388,16 +389,13 @@ class Magics():
         return bcancel_exec,newcode
         
     def filter(self, code):
-        ##魔法字典
         actualCode = ''
         newactualCode = ''
         self.reset_filter()
         self.init_filter(self.magics)
         magics =self.magics
         
-       ##扫描源码 进行标签行，特殊行处理
         for line in code.splitlines():
-            ##扫描源码每行行
             orgline=line
             if line==None or line.strip()=='': 
                 actualCode += line + '\n'
@@ -413,12 +411,6 @@ class Magics():
                 if self.call_btproc(magics,line):continue
  
                 
-                ##通知插件进行预处理
-                ##preprocessor
-                ##通知BOOL型标签插件处理
-                ##on_IBpCodescanning
-                ##调用BOOL标签接口
-                #_filter2_magics_i1
                 for pkey,pvalue in self.IBplugins.items():
                     print( pkey +":"+str(len(pvalue))+"\n")
                     for pobj in pvalue:
@@ -431,11 +423,7 @@ class Magics():
                         except Exception as e:
                             self._logln(str(e))
                         finally:pass
-                        # if newline!=None and newline!='':
-                        #     actualCode += newline + '\n'
                 ##
-                ##获得BOOL关键字
-                ##登记Bool型参数和值
                 findObj= re.search( r':(.*)',line)
                 if not findObj or len(findObj.group(0))<2:
                     continue
@@ -446,12 +434,6 @@ class Magics():
                 if newline!=line and len(newline)>0:
                     actualCode += newline + '\n'
                     continue
-               ##通知(赋值型插件)进行预处理
-                ##登记参数和值
-                ##处理参数和值 ？？？
-                ##合并处理结果
-                ##调用单标签接口
-                #_filter2_magics_i2
                 for pkey,pvalue in self.ISplugins.items():
                     for pobj in pvalue:
                         newline=''
@@ -468,21 +450,18 @@ class Magics():
             else:
                 actualCode += line + '\n'
         newactualCode=actualCode
-       ##第二次扫描源代码，进行预处理，比如宏标签处理，模板标签处理
         bcancel_exec,newcode=self.raise_ICodescan(magics,newactualCode)
         if not bcancel_exec:
             newactualCode=newcode
-       ##第三次扫描源代码，进行代码格式化
-            ##扫描源码每行行
-            ##清理测试代码 test_begin test_end
-            ##清理单行注释 // #
-        #_filter2_magics_pend
+        if len(self.get_magicsBvalue(magics,'cleartest'))>0 :
+            actualCode=self.kobj.cleantestcodeA(actualCode)
+        else:
+            actualCode=self.kobj.cleantestcodeB(actualCode)
         newactualCode=''
         for line in actualCode.splitlines():
             try:
-                # if len(self.addkey2dict(magics,'test'))<1:
-                if len(self.addkey2dict(magics,'discleannotes'))>0 :continue
-                line=self.kobj.cleantestcode(line)
+                if len(self.get_magicsBvalue(magics,'discleannotes'))>0 :continue
+                
                 if line=='':continue
                 line=self.kobj.cleandqm(line)
                 if line=='':continue
@@ -496,5 +475,4 @@ class Magics():
                     newactualCode += line + '\n'
             except Exception as e:
                 self.kobj._log(str(e),3)
-       ##返回 magics, newactualCode
         return magics, newactualCode
