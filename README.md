@@ -71,11 +71,12 @@ Example3:
 | outputtype: | text/plain | mime-type                                                                                                        |
 | outencode:  | UTF-8      | set stdout encode                                                                                                |
 | runinterm   |            | Run the code in the terminal                                                                                     |
-| term:       |gnome-terminal| linux:gnome-terminal windows:c:\Windows\\System32\cmd.exe /c start                                    |
+| term:       |gnome-terminal| linux:gnome-terminal windows:c:\Windows\\System32\cmd.exe /c start                                             |
+| cwd :       |            | The working directory in which the program runs                                                                  |
 ---
 #### Interactive running code
-| label         | value | annotation                                                                                  |
-| :-------------- | :------: | :-------------------------------------------------------------------------------------------- |
+| label         | value  | annotation                                                                                  |
+| :------------ | :----: | :------------------------------------------------------------------------------------------ |
 | runmode:      |  repl  | The code will run in interactive mode.                                                      |
 | replcmdmode   |        | (repl interactive mode) to send stdin information to the specified process (repl child PID) |
 | replsetip:    | "\r\n" | Set (repl interactive mode) the prompt string when waiting for input                        |
@@ -84,28 +85,28 @@ Example3:
 ---
 #### Interactive running GDB
 | label  | value | annotation                                               |
-| :------- | :-----: | :--------------------------------------------------------- |
-| rungdb |      | Run GDB and send commands to GDB (repl interactive mode) |
+| :----- | :---: | :------------------------------------------------------- |
+| rungdb |       | Run GDB and send commands to GDB (repl interactive mode) |
 ---
 #### Save code and include file
-| label         | value | annotation                                              |
-| :------------ | :---: | :--------------------------------------------------     |
-| noruncode     |      | Do not run code content                                  |
-| overwritefile |      | Overwrite existing files                                 |
-| fileencode:   | UTF-8| code file encode                                         |
-| file:         |      | The code can be saved to multiple files                  |
-| fndict:       |      | Dictionary for file names                                |
-| filefordict:  |      | Replace $key of fndict with a string from the fndict when save file |
-| fnlist:       |      | List for file names                                      |
-| fileforlist:  |      | Replace $fnlist with a string from the list  when save file |
-| include:      |      | Places the specified file contents in the label location |
+| label         | value | annotation                                               |
+| :------------ | :---: | :---------------------------------------------------     |
+| noruncode     |       | Do not run code content                                  |
+| overwritefile |       | Overwrite existing files                                 |
+| fileencode:   | UTF-8 | code file encode                                         |
+| file:         |       | The code can be saved to multiple files                  |
+| fndict:       |       | Dictionary for file names                                |
+| filefordict:  |       | Replace $key of fndict with a string from the fndict when save file |
+| fnlist:       |       | List for file names                                      |
+| fileforlist:  |       | Replace $fnlist with a string from the list  when save file |
+| include:      |       | Places the specified file contents in the label location |
 ---
 #### Templates and testing
 | label                                                                                                                                          |
-| :----------------------------------------------------------------------------------------------------------------------------------------------- |
+| :--------------------------------------------------------------------------------------------------------------------------------------------- |
 | Define a macro                                                                                                                                 |
 | define:Define a macro，The content is jinja2 template. example:\#\#%define:M1 this is {{name}}                                                 |
-| &emsp; `##$Macroname` or `//$Macroname` Replace with macro                                                                                    |
+| &emsp; `##$Macroname` or `//$Macroname` Replace with macro                                                                                     |
 | &emsp; `##$M1` name='jinja2 content' This line will be replaced by this is jinja2 content                                                      |
 | templatefile:                                                                                                                                  |
 | Define template code area                                                                                                                      |
@@ -115,27 +116,27 @@ Example3:
 | Define test code area                                                                                                                          |
 | ##test_begin  /  //test_begin                                                                                                                  |
 | ##test_end    /  //test_end                                                                                                                    |
-| test_Begin and test_End is the test code，Will not be saved to the file                                                                      |
-| \#\#mdf:    /  //mdf:                                                                                                                  |
-| \#\#mdfend  /  //mdfend                                                                                                                    |
-| \#\#mdf and \#\#mdfend  content，Will be saved to the file                                                                      |
+| test_Begin and test_End is the test code，Will not be saved to the file                                                                        |
+| \#\#mdf:    /  //mdf:                                                                                                                          |
+| \#\#mdfend  /  //mdfend                                                                                                                        |
+| \#\#mdf and \#\#mdfend  content，Will be saved to the file                                                                                     |
 ---
 #### Commands and environment variables
 | label       |           value           | annotation                                                                         |
-| :------------ | :-------------------------: | :----------------------------------------------------------------------------------- |
-| command:    |                          | shell command or executable                                                        |
-| pycmd:      |                          | python parameter command                                                           |
-| dartcmd:    |                          | dart parameter command                                                             |
+| :---------- | :-----------------------: | :--------------------------------------------------------------------------------- |
+| command:    |                           | shell command or executable                                                        |
+| pycmd:      |                           | python parameter command                                                           |
+| dartcmd:    |                           | dart parameter command                                                             |
 | fluttercmd: | flutter parameter command |                                                                                    |
-| kcmd:       |                          | jupyter kernel command                                                             |
-| env:        |                          | Setting environment variables for code file runtime.example: name=xxx name2='dddd' |
+| kcmd:       |                           | jupyter kernel command                                                             |
+| env:        |                           | Setting environment variables for code file runtime.example: name=xxx name2='dddd' |
 ---
 #### Behavior control
-| label       | value | annotation                 |
-| :------------ | :-----: | :--------------------------- |
-| noruncode   |      | Do not run code content    |
-| onlycsfile  |      | Generate code files only   |
-| onlyruncmd  |      | Run the label command only |
-| onlycompile |      | Compile code content only  |
+| label       |  value  | annotation                 |
+| :---------- | :-----: | :------------------------- |
+| noruncode   |         | Do not run code content    |
+| onlycsfile  |         | Generate code files only   |
+| onlyruncmd  |         | Run the label command only |
+| onlycompile |         | Compile code content only  |
 ### License
 [MIT](LICENSE.txt)
