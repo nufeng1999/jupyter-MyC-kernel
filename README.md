@@ -34,6 +34,7 @@ My minification kelnel of jupyter
 |[MyPHP](https://github.com/nufeng1999/jupyter-MyPHP-kernel)             |[MyR](https://github.com/nufeng1999/jupyter-MyR-kernel)                 |
 |[MyMake](https://github.com/nufeng1999/jupyter-MyMake-kernel)           |[MyRust](https://github.com/nufeng1999/jupyter-MyRust-kernel)           |
 |[MyRuby](https://github.com/nufeng1999/jupyter-MyRuby-kernel)           |[MyTcl](https://github.com/nufeng1999/jupyter-MyTcl-kernel)             |
+|[MyVimscript](https://github.com/nufeng1999/jupyter-MyVimscript-kernel) | |
   
 ----  
 ### Support label  
@@ -55,7 +56,8 @@ Example3:
 `echo "shell cmd test"`   
 `ls`   
   
-----
+  
+----  
 #### Compile and run code
 | label       |   value    | annotation                                                                                                       |
 | :---------- | :--------: | :--------------------------------------------------------------------------------------------------------------- |
@@ -106,22 +108,22 @@ Example3:
 | label                                                                                                                                          |
 | :--------------------------------------------------------------------------------------------------------------------------------------------- |
 | Define a macro                                                                                                                                 |
-| define:Define a macro，The content is jinja2 template. example:\#\#%define:M1 this is {{name}}                                                 |
+| define:Define a macro，The content is jinja2 template. example:`##%define:M1 this is {{name}}`                                                 |
 | &emsp; `##$Macroname` or `//$Macroname` Replace with macro                                                                                     |
-| &emsp; `##$M1` name='jinja2 content' This line will be replaced by this is jinja2 content                                                      |
+| &emsp; `##$M1 name='jinja2 content'` This line will be replaced by this is jinja2 content                                                      |
 | templatefile:                                                                                                                                  |
 | Define template code area                                                                                                                      |
-| \#\#jj2_begin or  //jj2_begin                                                                                                                  |
-| \#\#jj2_end   or  //jj2_end                                                                                                                    |
-| Put template code between jj2_begin and jj2__end ，jj2_begin Followed by parameters example: name='jinja2 content'.example: jj2_begin:name=www |
-| Define test code area                                                                                                                          |
-|   /                                                                                                                    |
-|     /                                                                                                                      |
+| `##jj2_begin` or  `//jj2_begin`                                                                                                                  |
+| `##jj2_end`   or  `//jj2_end`                                                                                                                    |
+| Put template code between `##jj2_begin` and `##jj2_end` ，jj2_begin Followed by parameters example: `name='jinja2 content'`.example: `##jj2_begin:name=www` |
+| Define test code area                                                                                                                          |  
+| `## test_begin`  or  `// test_begin`                                                                                                                  |
+| `## test_end`    or  `// test_end`                                                                                                                    |
 | test_Begin and test_End is the test code，Will not be saved to the file                                                                        |
-| ##%cleartest clear test code                                                                       |
-| \#\#mdf:    /  //mdf:                                                                                                                          |
-| \#\#mdfend  /  //mdfend                                                                                                                        |
-| \#\#mdf and \#\#mdfend  content，Will be saved to the file                                                                                     |
+| `##%cleartest` clear test code                                                                       |
+| `##mdf:`    or  `//mdf:`                                                                                                                          |
+| `##mdfend`  or  `//mdfend`                                                                                                                        |
+| `##mdf` and `##mdfend`  content，Will be saved to the file                                                                                     |
 ---
 #### Commands and environment variables
 | label       |           value           | annotation                                                                         |
