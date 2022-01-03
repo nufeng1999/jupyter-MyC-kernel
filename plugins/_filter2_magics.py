@@ -116,6 +116,12 @@ class Magics():
                 pubclass = pubclass[:len(pubclass)-1]
             magics['pubclass'] = pubclass
         return ''
+    def kfn_strlable(self,key,value,magics,line):
+        magics['_st'][key] = value.strip()
+        return ''
+    def kfn_listlable(self,key,value,magics,line):
+        magics['_st'][key] +=[value.strip()]
+        return ''
     def kfn_ldflags(self,key,value,magics,line):
         for flag in value.split():
             magics['_st'][key] += [flag]
@@ -146,12 +152,11 @@ class Magics():
         else:
             magics['_st'][key] ='real'
         return ''
+    
     def kfn_replsetip(self,key,value,magics,line):
-        magics['_st']['replsetip'] = value
-        return ''
+        return self.kfn_strlable(key,value,magics,line)
     def kfn_replchildpid(self,key,value,magics,line):
-        magics['_st']['replchildpid'] = value
-        return ''
+        return self.kfn_strlable(key,value,magics,line)
     def kfn_pidcmd(self,key,value,magics,line):
         magics['_st']['pidcmd'] = [value]
         if len(magics['_st']['pidcmd'])>0:
@@ -166,18 +171,26 @@ class Magics():
         for argument in re.findall(r'(?:[^\s,"]|"(?:\\.|[^"])*")+', value):
             magics['_st']['term'] += [argument.strip('"')]
         return ''
+    
+    def kfn_fifoname(self,key,value,magics,line):
+        return self.kfn_strlable(key,value,magics,line)
+    def kfn_fifofile(self,key,value,magics,line):
+        return self.kfn_strlable(key,value,magics,line)
+    def kfn_stdoutd(self,key,value,magics,line):
+        return self.kfn_strlable(key,value,magics,line)
+    def kfn_stdind(self,key,value,magics,line):
+        return self.kfn_strlable(key,value,magics,line)
+    def kfn_smafterexec(self,key,value,magics,line):
+        return self.kfn_listlable(key,value,magics,line)
     def kfn_fileencode(self,key,value,magics,line):
-        magics['_st']['fileencode']=value.strip()
-        return ''
+        return self.kfn_strlable(key,value,magics,line)
     def kfn_outencode(self,key,value,magics,line):
-        magics['_st']['outencode']=value.strip()
-        return ''
+        return self.kfn_strlable(key,value,magics,line)
     def kfn_outputtype(self,key,value,magics,line):
-        magics['_st']['outputtype']=value.strip()
-        return ''
+        return self.kfn_strlable(key,value,magics,line)
     def kfn_cwd(self,key,value,magics,line):
-        magics['_st']['cwd'] = value.strip()
-        return ''
+        return self.kfn_strlable(key,value,magics,line)
+    
     def kfn_log(self,key,value,magics,line):
         magics['_st']['log'] = value.strip()
         self.kobj._loglevel= value.strip()
@@ -189,10 +202,8 @@ class Magics():
             return line
         return ''
     def kfn_runprg(self,key,value,magics,line):
-        magics['_st']['runprg'] = value
-        return ''
+        return self.kfn_strlable(key,value,magics,line)
     def kfn_runprgargs(self,key,value,magics,line):
-        # self.kobj._logln(value)
         for argument in re.findall(r'(?:[^\s,"]|"(?:\\.|[^"])*")+', value):
             magics['_st']['runprgargs'] += [argument.strip('"')]
         return ''
@@ -200,6 +211,7 @@ class Magics():
         for argument in re.findall(r'(?:[^\s,"]|"(?:\\.|[^"])*")+', value):
             magics['_st']['args'] += [argument.strip('"')]
         return ''
+    
     def init_filter(self,magics):
         self.addmagicsSLkey(magics,'package','0',self.slfn_package)
         self.addmagicsSLkey(magics,'public','0',self.slfn_public)
@@ -216,6 +228,12 @@ class Magics():
         self.addmagicsSkey(magics,'replchildpid',self.kfn_replchildpid)
         self.addmagicsSkey(magics,'pidcmd',self.kfn_pidcmd)
         self.addmagicsSkey(magics,'term',self.kfn_term)
+        self.addmagicsSkey(magics,'fifoname',self.kfn_fifoname)
+        self.addmagicsSkey(magics,'fifofile',self.kfn_fifofile)
+        self.addmagicsSkey(magics,'stdout->',self.kfn_stdoutd)
+        self.addmagicsSkey(magics,'stdin<-',self.kfn_stdind)
+        self.addmagicsSkey(magics,'smafterexec',self.kfn_smafterexec)
+        
         self.addmagicsSkey(magics,'outputtype',self.kfn_outputtype)
         self.addmagicsSkey(magics,'fileencode',self.kfn_fileencode)
         self.addmagicsSkey(magics,'outencode',self.kfn_outencode)
@@ -243,6 +261,8 @@ class Magics():
                 'runinterm':'',
                 'replcmdmode':'',
                 'replprompt':'',
+                'stdout2fifo':'',
+                'fifo2stdin':'',
                 'discleannotes':''
                 },
                 '_st':{
@@ -255,6 +275,11 @@ class Magics():
                 'runmode':[],
                 'replsetip':[],
                 'replchildpid':"0",
+                'fifoname':"",
+                'fifofile':"",
+                'stdout->':'',
+                'stdin<-':'',
+                'smafterexec':[],
                 'pidcmd':[],
                 'term':[],
                 'fileencode':'UTF-8',
@@ -274,6 +299,8 @@ class Magics():
                 'runinterm':[],
                 'replcmdmode':[],
                 'replprompt':[],
+                'stdout2fifo':[],
+                'fifo2stdin':[],
                 'discleannotes':[]
                 },
                 '_stf':{
@@ -286,6 +313,11 @@ class Magics():
                 'runmode':[],
                 'replsetip':[],
                 'replchildpid':[],
+                'fifoname':[],
+                'fifofile':[],
+                'stdout->':[],
+                'stdin<-':[],
+                'smafterexec':[],
                 'pidcmd':[],
                 'term':[],
                 'fileencode':[],
