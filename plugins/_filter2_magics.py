@@ -171,7 +171,6 @@ class Magics():
         for argument in re.findall(r'(?:[^\s,"]|"(?:\\.|[^"])*")+', value):
             magics['_st']['term'] += [argument.strip('"')]
         return ''
-    
     def kfn_fifoname(self,key,value,magics,line):
         return self.kfn_strlable(key,value,magics,line)
     def kfn_fifofile(self,key,value,magics,line):
@@ -180,7 +179,55 @@ class Magics():
         return self.kfn_strlable(key,value,magics,line)
     def kfn_stdind(self,key,value,magics,line):
         return self.kfn_strlable(key,value,magics,line)
+        
+    def kfn_srvmode(self,key,value,magics,line):
+        return self.kfn_strlable(key,value,magics,line)
+    def kfn_srvurl(self,key,value,magics,line):
+        return self.kfn_strlable(key,value,magics,line)
+    def kfn_stoprpcsrv(self,key,value,magics,line):
+        return self.kfn_listlable(key,value,magics,line)
+    def kfn_sendrpcmsg(self,key,value,magics,line):
+        magics['_st'][key] +=[value.strip()]
+        msg=''
+        rpcurl=''
+        outencode='UTF-8'
+        outencode=self.kobj.get_outencode(magics)
+        if(outencode==None or len(outencode)<0):outencode='UTF-8'
+        if len(value.strip())<1:return ''
+        li=value.split(" ", 1)
+        if len(li)<2:return ''
+        rpcurl=li[0]
+        msg=li[1]
+        self.kobj.send_cmd(magics,rpcurl,msg)
+        return ''
+    def kfn_srmafterexec(self,key,value,magics,line):
+        return self.kfn_listlable(key,value,magics,line)
     def kfn_smafterexec(self,key,value,magics,line):
+        return self.kfn_listlable(key,value,magics,line)
+        
+    def kfn_runlist(self,key,value,magics,line):
+        try:
+            if len(value)>0:
+                for argument in re.findall(r'(?:[^\s,"]|"(?:\\.|[^"])*")+', value):
+                    magics['_st'][key] += [argument.strip('"')]
+        except Exception as e:
+            self.kobj._log(str(e),2)
+        return ''
+    def kfn_runforlist(self,key,value,magics,line):
+        try:
+            ##获取 list 值
+            list=self.kobj.get_magicsSvalue(magics,'runlist')
+            if len(list)<1:return ''
+            newval=value
+            magics['_st'][key]=[]
+            for li in list:
+                newval=value.replace('$runlist',li.strip()) 
+                if len(newval)>0:
+                    magics['_st'][key] += [newval[re.search(r'[^/]',newval).start():]]
+        except Exception as e:
+            self.kobj._logln(str(e),2)
+        return ''
+    def kfn_assfile(self,key,value,magics,line):
         return self.kfn_listlable(key,value,magics,line)
     def kfn_fileencode(self,key,value,magics,line):
         return self.kfn_strlable(key,value,magics,line)
@@ -228,12 +275,20 @@ class Magics():
         self.addmagicsSkey(magics,'replchildpid',self.kfn_replchildpid)
         self.addmagicsSkey(magics,'pidcmd',self.kfn_pidcmd)
         self.addmagicsSkey(magics,'term',self.kfn_term)
+        self.addmagicsSkey(magics,'srvmode',self.kfn_srvmode)
+        self.addmagicsSkey(magics,'srvurl' ,self.kfn_srvurl)
         self.addmagicsSkey(magics,'fifoname',self.kfn_fifoname)
         self.addmagicsSkey(magics,'fifofile',self.kfn_fifofile)
         self.addmagicsSkey(magics,'stdout->',self.kfn_stdoutd)
         self.addmagicsSkey(magics,'stdin<-',self.kfn_stdind)
+        self.addmagicsSkey(magics,'stoprpcsrv',self.kfn_stoprpcsrv)
+        self.addmagicsSkey(magics,'sendrpcmsg',self.kfn_sendrpcmsg)
+        self.addmagicsSkey(magics,'srmafterexec',self.kfn_srmafterexec)
         self.addmagicsSkey(magics,'smafterexec',self.kfn_smafterexec)
+        self.addmagicsSkey(magics,'runforlist',self.kfn_runforlist)
+        self.addmagicsSkey(magics,'runlist',self.kfn_runlist)
         
+        self.addmagicsSkey(magics,'assfile',self.kfn_assfile)
         self.addmagicsSkey(magics,'outputtype',self.kfn_outputtype)
         self.addmagicsSkey(magics,'fileencode',self.kfn_fileencode)
         self.addmagicsSkey(magics,'outencode',self.kfn_outencode)
@@ -261,6 +316,7 @@ class Magics():
                 'runinterm':'',
                 'replcmdmode':'',
                 'replprompt':'',
+                'rpcsrvfollowcode':'',
                 'stdout2fifo':'',
                 'fifo2stdin':'',
                 'discleannotes':''
@@ -275,11 +331,19 @@ class Magics():
                 'runmode':[],
                 'replsetip':[],
                 'replchildpid':"0",
+                'srvmode':"",
+                'srvurl':"",
                 'fifoname':"",
                 'fifofile':"",
                 'stdout->':'',
                 'stdin<-':'',
+                'stoprpcsrv':[],
+                'sendrpcmsg':[],
+                'srmafterexec':[],
                 'smafterexec':[],
+                'runforlist':'',
+                'runlist':[],
+                'assfile':[],
                 'pidcmd':[],
                 'term':[],
                 'fileencode':'UTF-8',
@@ -299,6 +363,7 @@ class Magics():
                 'runinterm':[],
                 'replcmdmode':[],
                 'replprompt':[],
+                'rpcsrvfollowcode':[],
                 'stdout2fifo':[],
                 'fifo2stdin':[],
                 'discleannotes':[]
@@ -313,11 +378,19 @@ class Magics():
                 'runmode':[],
                 'replsetip':[],
                 'replchildpid':[],
+                'srvmode':[],
+                'srvurl':[],
                 'fifoname':[],
                 'fifofile':[],
                 'stdout->':[],
                 'stdin<-':[],
+                'stoprpcsrv':[],
+                'sendrpcmsg':[],
+                'srmafterexec':[],
                 'smafterexec':[],
+                'runforlist':[],
+                'runlist':[],
+                'assfile':[],
                 'pidcmd':[],
                 'term':[],
                 'fileencode':[],

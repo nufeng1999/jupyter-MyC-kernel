@@ -13,6 +13,9 @@ from abc import ABCMeta, abstractmethod
 from typing import List, Dict, Tuple, Sequence
 from shutil import copyfile,move
 from urllib.request import urlopen
+import socket
+import copy
+import zerorpc
 import mmap
 import contextlib
 import atexit
@@ -39,6 +42,7 @@ import time
 import importlib
 import importlib.util
 import inspect
+from . import ipynbfile
 from plugins.ISpecialID import IStag,IDtag,IBtag,ITag,ICodePreproc
 from plugins._filter2_magics import Magics
 fcntl = None
@@ -52,6 +56,30 @@ else:
     bLinux = False
 ##
 ##
+class RPCsrv(object):
+    def __init__(self,kobj,magics):
+        self.kobj=kobj
+        self.magics=magics
+    def output(self, contents):
+        self.kobj._logln(contents)
+        return
+    def stdincmd(self,cmdstr,outencode='UTF-8'):
+        pass
+        if self.kobj._put2stdin_queue.full(): return ''
+        self.kobj._put2stdin_queue.put(cmdstr.encode(outencode, errors='ignore'))
+        return cmdstr
+    def cmd(self,cmdstr,outencode='UTF-8'):
+        self.kobj._logln("cmd received:"+cmdstr)
+        if cmdstr.strip()=='stopsrv':
+            self.kobj.stop_srvmode()
+        return cmdstr
+    def retryexeccode(self):
+        self.kobj.do_retryexeccode()
+        return
+    def stopsrv(self):
+        self.kobj.stop_srvmode()
+        return
+    
 ##
 class CFileLock:
     def __init__(self, filename):
@@ -211,6 +239,9 @@ class RealTimeSubprocess(subprocess.Popen):
             sh_contents = read_all_from_queue(self._fiforead_queue)
             if sh_contents:
                 self.stdin.write(sh_contents)
+        k_contents = read_all_from_queue(self.kobj._put2stdin_queue)
+        if k_contents:
+            self.stdin.write(k_contents)
         stderr_contents = read_all_from_queue(self._stderr_queue)
         if stderr_contents:
             if self.kobj!=None:
@@ -319,6 +350,7 @@ class RealTimeSubprocess(subprocess.Popen):
                 self._write_to_stdout(contents,magics)
     def wait_end(self,magics):
         while self.poll() is None:
+            time.sleep(1/1000)
             if self.kobj.get_magicsSvalue(magics,"outputtype").startswith("text"):
                 self.write_contents(magics)
             pass
@@ -374,6 +406,12 @@ class MyKernel(Kernel):
     main_foot = "\nreturn 0;\n}"
     def __init__(self, *args, **kwargs):
         super(MyKernel, self).__init__(*args, **kwargs)
+        self.__rpcsrv = None
+        self._rpcsrv_thread= None
+        self.rpcsrvobj=None
+        self.first_magics=None
+        self._put2stdin_queue = Queue(maxsize=1024)
+        self.first_cellcodeinfo=None
         self.flock=None
         self._allow_stdin = True
         self.readOnlyFileSystem = False
@@ -1306,27 +1344,133 @@ class MyKernel(Kernel):
         retinfo=self.get_retinfo()
         return bcancel_exec,retinfo,magics, code
 ##
+    def run_forlist(self,magics):
+        runforlist=self.get_magicsSvalue(magics,'runforlist')
+        if len(runforlist)>0:
+            self._run_forlist(runforlist,magics,singlecell=False)
+        return
+    def _run_forlist(self,files:List,magics,singlecell=True)->str:
+        def runcellcode(fileitem,origcwd):
+            try:
+                cwd=origcwd
+                filename,code=ipynbfile.loadnb(fileitem)
+                if code==None or len(code.strip())<1:
+                    return False
+                if filename!=None and len(filename.strip())>0:
+                    cwd=os.path.dirname(filename)
+                if cwd==None or len(cwd.strip())<1:
+                    cwd=origcwd
+                os.chdir(cwd)
+                self.do_executecode(code)
+                os.chdir(origcwd)
+            except Exception as e:
+                os.chdir(origcwd)
+                self._log(str(e),2)
+            return True
+        origcwd=os.getcwd()
+        index=-1
+        try:
+            if(len(files)<1):return 
+            for sli in files:
+                cwd=origcwd
+                fileitem=sli
+                self._logln("---------\nExecute associated fileitem:"+fileitem)
+                if not singlecell:
+                    fcellcount=ipynbfile.getnbcodecount(fileitem)
+                    index=0
+                    while index<fcellcount:
+                        realfileitem=fileitem+" "+str(index)
+                        runcellcode(realfileitem,origcwd)
+                        index+=1
+                else:
+                    if not runcellcode(fileitem,origcwd):continue
+                os.chdir(origcwd)
+        except Exception as e:
+                self._log(str(e),2)
+        os.chdir(origcwd)
+        return 
+    def run_assfile(self,magics):
+        files=self.get_magicsSvalue(magics,'assfile')
+        if(len(files)<1):return 
+        self._run_forlist(files,magics)
+        return
+    def do_retryexeccode(self):
+        if self.cellcodeinfo!=None:
+            self.do_executecode(self.first_cellcodeinfo['code'])
     def do_execute(self, code, silent, store_history=True,
                    user_expressions=None, allow_stdin=True):
+        self._logln("Current working directory:"+os.getcwd())
+        self._put2stdin_queue = Queue(maxsize=1024)
+        self.first_magics=None
+        if self.first_cellcodeinfo==None:
+            self.first_cellcodeinfo={
+                "code":code, 
+                "silent":silent, 
+                "store_history":store_history,
+                "user_expressions":user_expressions,
+                "allow_stdin":allow_stdin
+            }
+        retinfo= self.do_executecode(code)
+        self.do_atparentexit(self.first_magics)
+        rpcsrvfollowcode=''
+        if self.first_magics!=None:
+            rpcsrvfollowcode=self.get_magicsBvalue(self.first_magics,'rpcsrvfollowcode')
+        if len(rpcsrvfollowcode)>0 and self.__rpcsrv != None:
+            self.stop_srvmode()
+        if self.__rpcsrv != None:
+            self._rpcsrv_thread.join()
+        self.__rpcsrv =None
+        self._rpcsrv_thread = None
+        return retinfo
+    
+    def do_atparentexit(self,magics):
+        self.run_forlist(magics)
+        self.run_assfile(magics)
+        self.srmsgafterexec(magics)
+        self.smsgafterexec(magics)
+    def do_atexit(self,magics):
+        pass
+    def do_executecode(self, code):
+        silent=None
+        store_history=True
+        user_expressions=None
+        allow_stdin=True
+        if self.first_cellcodeinfo!=None:
+            silent=self.first_cellcodeinfo['silent']
+            store_history=self.first_cellcodeinfo['store_history'],
+            user_expressions=self.first_cellcodeinfo['user_expressions']
+            allow_stdin=self.first_cellcodeinfo['allow_stdin']
+        self._put2stdin_queue = Queue(maxsize=1024)
         self.silent = silent
         retinfo=self.get_retinfo()
         if len(code.strip())<1:return retinfo
         magics, code = self.mag.filter(code)
+        if self.first_magics==None:
+            self.first_magics={}
+            self.first_magics=magics.copy()
+            self.first_magics['_sline']=copy.deepcopy(magics['_sline'])
+            self.first_magics['_bt']=copy.deepcopy(magics['_bt'])
+            self.first_magics['_dt']=copy.deepcopy(magics['_dt'])
+            self.first_magics['_st']=copy.deepcopy(magics['_st'])
+        rurl=self.get_magicsSvalue(magics,'srvmode')
+        if rurl!=None and len(rurl)>0 and self.__rpcsrv == None:
+            rpcsrvobj=RPCsrv(self,magics)
+            self.start_srvmode(magics,rpcsrvobj)
         if (len(self.get_magicsbykey(magics,'onlyrunmagics'))>0 or len(self.get_magicsbykey(magics,'onlyruncmd'))>0):
             bcancel_exec=True
-            self.smsgafterexec(magics)
+            self.do_atexit(magics)
             return retinfo
         if len(self.get_magicsBvalue(magics,'replcmdmode'))>0:
             bcancel_exec=True
             retinfo= self.send_replcmd(code, silent, store_history,user_expressions, allow_stdin)
-            self.smsgafterexec(magics)
+            self.do_atexit(magics)
             return retinfo
         
         if(len(self.get_magicsSvalue(magics,'runprg'))>0):
             retinfo=self.do_execute_runprg(code, magics,silent, store_history,
                    user_expressions, allow_stdin)
             self.cleanup_files()
-            self.smsgafterexec(magics)
+            self.do_atexit(magics)
             return retinfo
         if(self.runfiletype=='script'):
             retinfo=self.do_execute_script(code, magics,silent, store_history,
@@ -1338,9 +1482,25 @@ class MyKernel(Kernel):
             retinfo=self.do_execute_script(code, magics,silent, store_history,
                    user_expressions, allow_stdin)
         
-        self.smsgafterexec(magics)
+        self.do_atexit(magics)
         self.cleanup_files()
         return retinfo
+    
+    def srmsgafterexec(self,magics):
+        srmafterexec=self.get_magicsSvalue(magics,'srmafterexec')
+        if len(srmafterexec)<1 :return
+        msg=''
+        rpcurl=''
+        outencode='UTF-8'
+        outencode=self.get_outencode(magics)
+        if(outencode==None or len(outencode)<0):outencode='UTF-8'
+        for sli in srmafterexec:
+            if len(sli.strip())<1:continue
+            li=sli.split(" ", 1)
+            if len(li)<2:continue
+            rpcurl=li[0]
+            msg=li[1]+"\n"
+            self.send_stdincmd(magics,rpcurl,msg)
     def smsgafterexec(self,magics):
         smafterexec=self.get_magicsSvalue(magics,'smafterexec')
         if len(smafterexec)<1 :return
@@ -1491,6 +1651,82 @@ class MyKernel(Kernel):
             except Exception as e:
                 break
         return bret
+     
+    def start_srvmode(self,magics,rpcsrvobj,rpcurl=None):
+        if self._rpcsrv_thread != None:
+            return
+        self._rpcsrv_thread = Thread(target=MyKernel.rpc_srv, args=(self,magics,rpcsrvobj,rpcurl))
+        self._rpcsrv_thread.daemon = True
+        self._rpcsrv_thread.start()
+        self._logln("srvmode start...")
+    def rpc_srv(kobj,magics,rpcsrvobj,rpcurl=None):
+        rurl=rpcurl
+        # kobj.__rpcsrv = None
+        if rpcurl==None:
+            rurl=kobj.get_magicsSvalue(magics,'srvmode')
+        if rpcsrvobj!=None and rurl!=None and len(rurl)>0:
+            try:
+                kobj.__rpcsrv = zerorpc.Server(rpcsrvobj)
+                kobj.__rpcsrv._context.setsockopt(socket.SO_REUSEADDR, 1)
+                kobj.__rpcsrv.bind(rurl)
+                kobj.__rpcsrv.run()
+            except Exception as e:
+                kobj._logln("start_srvmode err:"+str(e),3)
+                if kobj.__rpcsrv!=None :kobj.__rpcsrv.close()
+        return 
+    def stop_srvmode(self):
+        if self.__rpcsrv!=None :
+            try:
+                rurl=self.get_magicsSvalue(self.first_magics,'srvmode')
+                self.__rpcsrv.disconnect(rurl)
+                self.__rpcsrv.stop()
+                self.__rpcsrv.close()
+                self.__rpcsrv._context.destroy()
+                # self._put2stdin_queue = None
+            except Exception as e:
+                pass
+        # self._rpcsrv_thread.join()
+    def get_rpcsrvobj(self,magics,rpcurl=None):
+        rpcsrvobj=None
+        if rpcurl==None:
+            rpcurl=self.get_magicsSvalue(magics,'srvurl')
+        if rpcurl!=None and len(rpcurl)>0:
+            try:
+                rpcsrvobj = zerorpc.Client()
+                rpcsrvobj.connect(rpcurl)
+            except Exception as e:
+                if rpcsrvobj!=None :rpcsrvobj.close()
+                rpcsrvobj=None
+        return rpcsrvobj
+    def send_stdincmd(self,magics,rpcurl,cmdstr):
+        if rpcurl==None or len(rpcurl.strip())<3:
+            rpcurl=self.get_magicsSvalue(magics,'srvurl')
+        if rpcurl!=None and len(rpcurl.strip())>0:
+            try:
+                rpcsrvobj=self.get_rpcsrvobj(magics,rpcurl)
+                if rpcsrvobj!=None:
+                    rpcsrvobj.stdincmd(cmdstr)
+                    rpcsrvobj.close()
+            except Exception as e:
+                pass
+    def send_cmd(self,magics,rpcurl,cmdstr):
+        if rpcurl==None or len(rpcurl.strip())<3:
+            rpcurl=self.get_magicsSvalue(magics,'srvurl')
+        if rpcurl!=None and len(rpcurl.strip())>0:
+            try:
+                rpcsrvobj=self.get_rpcsrvobj(magics,rpcurl)
+                if rpcsrvobj!=None:
+                    rpcsrvobj.cmd(cmdstr)
+                    rpcsrvobj.close()
+            except Exception as e:
+                pass
+    def exec_rpccmd(self,magics,rpcurl=None,func=None,*args,**kwargs):
+        if self.rpcsrvobj==None and rpcurl!=None and len(rpcurl)>0:
+            self.rpcsrvobj=self.get_rpccli(magics,rpcurl=rpcurl)
+        if self.rpcsrvobj!=None and func!=None:
+            ret=func(*args,**kwargs)
+            return ret
+        return None
 ##
     ISplugins={"0":[],
          "1":[],
