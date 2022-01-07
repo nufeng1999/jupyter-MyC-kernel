@@ -15,7 +15,6 @@ from shutil import copyfile,move
 from urllib.request import urlopen
 import socket
 import copy
-import zerorpc
 import mmap
 import contextlib
 import atexit
@@ -45,6 +44,11 @@ import inspect
 from . import ipynbfile
 from plugins.ISpecialID import IStag,IDtag,IBtag,ITag,ICodePreproc
 from plugins._filter2_magics import Magics
+try:
+    zerorpc=__import__("zerorpc")
+    # import zerorpc
+except:
+    pass
 fcntl = None
 msvcrt = None
 bLinux = True
@@ -154,7 +158,7 @@ class CKernel(MyKernel):
         ##代码运行前
         ################# repl mode run code files
         #FIXME:
-        if len(self.addkey2dict(magics,'execfile'))>0:
+        if len(self.mymagics.addkey2dict(magics,'execfile'))>0:
             fil_ename=magics['execfile']
         if magics['_st']['runmode']=='repl':
             self.mymagics._start_replprg(fil_ename,magics['_st']['args'],magics)
@@ -172,8 +176,8 @@ class CKernel(MyKernel):
         #################
         else:
             p = self.mymagics.create_jupyter_subprocess([fil_ename] + magics['_st']['args'],env=self.mymagics.addkey2dict(magics,'env'),magics=magics)
-        self.subprocess=p
-        self.g_rtsps[str(p.pid)]=p
+        self.mymagics.subprocess=p
+        self.mymagics.g_rtsps[str(p.pid)]=p
         return_code=p.returncode
         ##代码启动后
         bcancel_exec,retstr=self.mymagics.raise_plugin(code,magics,return_code,fil_ename,3,2)
