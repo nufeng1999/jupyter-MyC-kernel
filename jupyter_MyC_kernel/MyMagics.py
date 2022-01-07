@@ -400,10 +400,6 @@ class MyMagics():
         echo "OK"
         '''
 ##
-    silent=None
-    jinja2_env = Environment()
-    g_rtsps={}
-    g_chkreplexit=True
 ##
     def get_retinfo(self, rettype:int=0):
         retinfo='OK'
@@ -463,6 +459,10 @@ class MyMagics():
         self.__isdstr=False
         self.__issstr=False
         self.__loglevel='1'
+        self.silent=None ##沉默运行，不输出任何信息
+        self.jinja2_env = Environment()
+        self.g_rtsps={}
+        self.g_chkreplexit=True
         
         self.ISplugins={"0":[],
             "1":[],
@@ -894,7 +894,6 @@ class MyMagics():
         try:
             request=urllib.request.Request(url)
             myURL = urlopen(request)
-            # content= myURL.read()
             lines = myURL.readlines()
             for line in lines:
                 print(line)
@@ -935,8 +934,6 @@ class MyMagics():
             if magics !=None and len(magics['_st']['outputtype'])>0:
                 self._write_display_data(mimetype=magics['_st']['outputtype'],contents=output)
                 return
-            # Send standard output
-            stream_content = {'name': 'stdout', 'text': output}
             self.__jkobj.sendresponse(output)
     def send_replcmd(self, code, silent, store_history=True,
                    user_expressions=None, allow_stdin=False,magics=None):
