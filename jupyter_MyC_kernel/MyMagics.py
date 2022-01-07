@@ -408,11 +408,11 @@ class MyMagics():
     def get_retinfo(self, rettype:int=0):
         retinfo='OK'
         if len(self.__independent)>0 and self.__jkobj!=None:
-            retinfo={'status': 'ok', 'execution_count': self.__jkobj.execution_count, 'payload': [], 'user_expressions': {}}
+            retinfo={'status': 'ok', 'execution_count': self.__jkobj.get_execution_count(), 'payload': [], 'user_expressions': {}}
         elif len(self.__independent)>0 and self.__jkobj==None:
             retinfo='OK'
         elif len(self.__independent)<1 and self.__jkobj!=None:
-            retinfo={'status': 'ok', 'execution_count': self.__jkobj.execution_count, 'payload': [], 'user_expressions': {}}
+            retinfo={'status': 'ok', 'execution_count': self.__jkobj.get_execution_count(), 'payload': [], 'user_expressions': {}}
         elif len(self.__independent)<1 and self.__jkobj==None:
             retinfo={'status': 'ok', 'execution_count': self.execution_count, 'payload': [], 'user_expressions': {}}
         return retinfo
@@ -435,14 +435,14 @@ class MyMagics():
             magics['_st']['joptions'][index+1]=cpstr
     def __init__(self,jkobj,runfiletype='', *args, **kwargs):
         self.runfiletype=runfiletype
-        self.kernelinfo='[MyMagics]'
         self.__independent='yes'
         self.__jkobj=jkobj
         self.__rpcsrv = None
         self._rpcsrv_thread= None
         self.rpcsrvobj=None
         self.kernelinfo="[MyMagics]"
-        if self.__jkobj!=None and hasattr(self.__jkobj, 'kernelinfo'):self.kernelinfo=self.__jkobj.kernelinfo
+        if self.__jkobj!=None :
+            self.kernelinfo=self.__jkobj.get_kernelinfo()
         self.first_magics=None
         self._put2stdin_queue = Queue(maxsize=1024)
         self.first_cellcodeinfo=None
@@ -511,6 +511,9 @@ class MyMagics():
         self.chk_replexit_thread.start()
         self.init_plugin()
         self.mag=Magics(self,self.plugins,self.ICodePreprocs)
+    def get_kernelinfo(self):
+        self.kernelinfo=self.__jkobj.get_kernelinfo()
+        return self.kernelinfo
     def reset(self):
         self.files =None
         self.first_magics=None
@@ -792,56 +795,60 @@ class MyMagics():
             source_file.flush()
         return source_file
     def rawinput(self):
-        if len(self.__independent)>0 and self.__jkobj!=None:
-            return self.__jkobj.raw_input()
-        elif len(self.__independent)>0 and self.__jkobj==None:
+        if len(self.__independent)>0:
+        #     return self.get_raw_input()
+        # elif len(self.__independent)>0:
+        #     ## 仅独立的
             return sys.stdin.readline()
-        elif len(self.__independent)<1 and self.__jkobj!=None:
-            return self.__jkobj.raw_input()
-        elif len(self.__independent)<1 and self.__jkobj==None:
-            return self.raw_input()
+        elif len(self.__independent)<1:
+            return self.get_raw_input()
+        # elif len(self.__independent)<1:
+        #     ## 非独立的
+        return self.get_raw_input()
             
     def sendresponse(self,contents,name='stdout',mimetype=None):
         if mimetype==None:
-            if len(self.__independent)>0 and self.__jkobj!=None:
-                self.__jkobj.send_response(self.__jkobj.iopub_socket, 'stream', {'name': name, 'text': contents})
-            elif len(self.__independent)>0 and self.__jkobj==None:
-                sys.stdout.write(contents)
-                sys.stdout.flush()
-            elif len(self.__independent)<1 and self.__jkobj!=None:
-                self.__jkobj.send_response(self.__jkobj.iopub_socket, 'stream', {'name': name, 'text': contents})
-            elif len(self.__independent)<1 and self.__jkobj==None:
-                self.send_response(self.iopub_socket, 'stream', {'name': name, 'text': contents})
+            # if len(self.get_mymagics().__independent)>0:
+            #     self.__jkobj.send_response(self.__jkobj.get_iopub_socket(), 'stream', {'name': name, 'text': contents})
+            # elif len(self.__independent)>0 and self.__jkobj==None:
+            #     ## 仅独立的
+            #     sys.stdout.write(contents)
+            #     sys.stdout.flush()
+            # elif len(self.get_mymagics().__independent)<1:
+            self.send_response(self.iopub_socket, 'stream', {'name': name, 'text': contents})
+            # elif len(self.__independent)<1 and self.__jkobj==None:
+            #     ## 非独立的
+            #     self.send_response(self.iopub_socket, 'stream', {'name': name, 'text': contents})
         else:
-            if len(self.__independent)>0 and self.__jkobj!=None:
-                self.__jkobj.send_response(self.__jkobj.iopub_socket, 'display_data', {'data': {mimetype:contents}, 'metadata': {mimetype:{}}})
-            elif len(self.__independent)>0 and self.__jkobj==None:
-                sys.stdout.write(contents)
-                sys.stdout.flush()
-            elif len(self.__independent)<1 and self.__jkobj!=None:
-                self.__jkobj.send_response(self.__jkobj.iopub_socket, 'display_data', {'data': {mimetype:contents}, 'metadata': {mimetype:{}}})
-            elif len(self.__independent)<1 and self.__jkobj==None:
-                self.send_response(self.iopub_socket, 'display_data', {'data': {mimetype:contents}, 'metadata': {mimetype:{}}})
+            # if len(self.get_mymagics().__independent)>0:
+            #     self.__jkobj.send_response(self.__jkobj.get_iopub_socket(), 'display_data', {'data': {mimetype:contents}, 'metadata': {mimetype:{}}})
+            # elif len(self.__independent)>0 and self.__jkobj==None:
+            #     sys.stdout.write(contents)
+            #     sys.stdout.flush()
+            # elif len(self.get_mymagics().__independent)<1:
+            #     self.__jkobj.send_response(self.__jkobj.get_iopub_socket(), 'display_data', {'data': {mimetype:contents}, 'metadata': {mimetype:{}}})
+            # elif len(self.__independent)<1 and self.__jkobj==None:
+            self.send_response(self.iopub_socket, 'display_data', {'data': {mimetype:contents}, 'metadata': {mimetype:{}}})
     def _log(self, output,level=1,outputtype='text/plain'):
         if self.__loglevel=='0': return
         streamname='stdout'
         if not self.silent:
-            prestr=self.kernelinfo+' Info:'
+            prestr=self.get_kernelinfo()+' Info:'
             if level==2:
-                prestr=self.kernelinfo+' Warning:'
+                prestr=self.get_kernelinfo()+' Warning:'
                 streamname='stderr'
             elif level==3:
-                prestr=self.kernelinfo+' Error:'
+                prestr=self.get_kernelinfo()+' Error:'
                 streamname='stderr'
             else:
-                prestr=self.kernelinfo+' Info:'
+                prestr=self.get_kernelinfo()+' Info:'
                 streamname='stdout'
             # if len(outputtype)>0 and (level!=2 or level!=3):
                 # self._write_display_data(mimetype=outputtype,contents=prestr+output)
                 # return
             # Send standard output
             stream_content = {'name': streamname, 'text': prestr+output}
-            self.sendresponse(prestr+output,name=streamname)
+            self.__jkobj.sendresponse(prestr+output,name=streamname)
     def _logln(self, output,level=1,outputtype='text/plain'):
         self._log(output+"\n",level=1,outputtype='text/plain')
     def _write_display_data(self,mimetype='text/html',contents=""):
@@ -861,16 +868,16 @@ class MyMagics():
         except Exception as e:
             self._logln("_write_display_data err "+str(e),3)
             return
-        self.sendresponse(contents,mimetype=mimetype)
+        self.__jkobj.sendresponse(contents,mimetype=mimetype)
     def _write_to_stdout(self,contents,magics=None):
         if magics !=None and len(magics['_st']['outputtype'])>0:
                 self._write_display_data(mimetype=magics['_st']['outputtype'],contents=contents)
         else:
-            self.sendresponse(contents,name='stdout')
+            self.__jkobj.sendresponse(contents,name='stdout')
     def _write_to_stderr(self, contents):
-        self.sendresponse(contents,name='stderr')
+        self.__jkobj.sendresponse(contents,name='stderr')
     def _read_from_stdin(self):
-        return self.rawinput()
+        return self.__jkobj.rawinput()
     def readcodefile(self,filename,spacecount=0):
         filecode=''
         codelist1=None
@@ -930,7 +937,7 @@ class MyMagics():
                 return
             # Send standard output
             stream_content = {'name': 'stdout', 'text': output}
-            self.sendresponse(output)
+            self.__jkobj.sendresponse(output)
     def send_replcmd(self, code, silent, store_history=True,
                    user_expressions=None, allow_stdin=False,magics=None):
         self.silent = silent
@@ -1168,7 +1175,7 @@ class MyMagics():
         x = re.search(r".*\s+main\s*\(", tmpCode)
         if not x:
             if self.__jkobj!=None and hasattr(self.__jkobj, 'main_head') and hasattr(self.__jkobj, 'main_foot'):
-                code = self.__jkobj.main_head + code + self.__jkobj.main_foot
+                code = self.__jkobj.get_main_head() + code + self.__jkobj.get_main_foot()
             else:
                 code = self.main_head + code + self.main_foot
             # magics['_st']['cflags'] += ['-lm']
