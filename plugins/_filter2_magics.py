@@ -240,7 +240,7 @@ class Magics():
     
     def kfn_log(self,key,value,magics,line):
         magics['_st']['log'] = value.strip()
-        self.kobj._loglevel= value.strip()
+        self.kobj.set_loglevel(value.strip())
         return ''
     def kfn_loadurl(self,key,value,magics,line):
         url=value
@@ -481,7 +481,6 @@ class Magics():
         newcode=code
         # for pluginlist in self.plugins:
         for pkey,pvalue in self.ICodePreprocs.items():
-            # print( pkey +":"+str(len(pvalue))+"\n")
             for pobj in pvalue:
                 try:
                     bretcancel_exec,newcode=pobj.on_Codescanning(pobj,magics,newcode)
@@ -517,7 +516,6 @@ class Magics():
  
                 
                 for pkey,pvalue in self.IBplugins.items():
-                    print( pkey +":"+str(len(pvalue))+"\n")
                     for pobj in pvalue:
                         newline=''
                         try:

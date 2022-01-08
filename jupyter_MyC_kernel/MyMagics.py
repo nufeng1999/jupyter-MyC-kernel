@@ -515,6 +515,8 @@ class MyMagics():
         self.chk_replexit_thread.start()
         self.init_plugin()
         self.mag=Magics(self,self.plugins,self.ICodePreprocs)
+    def set_loglevel(self,loglevel):
+        self.__loglevel=loglevel
     def get_kernelinfo(self):
         self.kernelinfo=self.__jkobj.get_kernelinfo()
         return self.kernelinfo
@@ -1129,7 +1131,7 @@ class MyMagics():
                 magics['_st']['term'] += [argument.strip('"')]
         return termcmd
     def create_termrunsh(self,execfile,magics):
-        fil_ename=execfile
+        file_name=execfile
         uname=''
         try:
             u=os.popen('bash -c "uname"')
@@ -1141,25 +1143,25 @@ class MyMagics():
             termrunsh="\n"+execfile+"\n"+pausestr+"\n"
             termrunsh_file=self.create_codetemp_file(magics,termrunsh,suffix='.sh')
             newsrcfilename=termrunsh_file.name
-            fil_ename=newsrcfilename
+            file_name=newsrcfilename
         elif self.sys=='Windows' :
             termrunsh="echo off\r\ncls\r\n"+execfile+"\r\npause\r\nexit\r\n"
             if execfile.strip().lower().endswith(".bat"):
                 termrunsh="echo off\r\ncls\r\ncall "+execfile+"\r\npause\r\nexit\r\n"
             termrunsh_file=self.create_codetemp_file(magics,termrunsh,suffix='.bat')
             newsrcfilename=termrunsh_file.name
-            fil_ename=newsrcfilename
+            file_name=newsrcfilename
         elif self.sys=='Linux':
             pausestr=self.pausestr
             termrunsh="\n"+execfile+"\n"+pausestr+"\n"
             termrunsh_file=self.create_codetemp_file(magics,termrunsh,suffix='.sh')
             newsrcfilename=termrunsh_file.name
-            fil_ename=newsrcfilename
+            file_name=newsrcfilename
         else:
             self._logln("Cannot create terminal!",3)
-        self._logln(fil_ename)
+        self._logln(file_name)
         os.chmod(newsrcfilename,stat.S_IRWXU+stat.S_IRGRP+stat.S_IXGRP+stat.S_IXOTH)
-        return fil_ename
+        return file_name
     # def clean_namedpipe(self,robj):
     #     if hasattr(robj,'fifow'):
     #         robj.fifow.close()
@@ -1181,6 +1183,7 @@ class MyMagics():
                 code = self.main_head + code + self.main_foot
             # magics['_st']['cflags'] += ['-lm']
         return magics, code
+##触发接口调用
     def raise_plugin(self,code,magics,returncode=None,filename='',ifunc=1,ieven=1)->Tuple[bool,str]:
         bcancel_exec=False
         bretcancel_exec=False
@@ -1213,6 +1216,7 @@ class MyMagics():
                         self._log(pobj.getName(pobj)+"---"+str(e)+"\n")
                     finally:pass
         return bcancel_exec,retstr
+    
 ##
     def do_execute_script(self, code, magics,silent, store_history=True,
                    user_expressions=None, allow_stdin=True):
@@ -1224,34 +1228,38 @@ class MyMagics():
             if bcancel_exec:return retinfo
             
             return_code=0
-            fil_ename=''
+            file_name=''
             retstr=''
             ##生成文件前通知插件
-            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,1,1)
+            ##生成文件前通知插件
+            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,file_name,1,1)
             if bcancel_exec:return  self.get_retinfo()
             ##生成代码文件
-            bcancel_exec,retinfo,magics, code,fil_ename,retstr=self.__jkobj.do_create_codefile(
+            bcancel_exec,retinfo,magics, code,file_name,retstr=self.__jkobj.do_create_codefile(
                 magics,code, 
                 silent, store_history,user_expressions, allow_stdin)
             if bcancel_exec:return retinfo
-            code,magics,return_code,fil_ename
+            code,magics,return_code,file_name
             ##生成文件后通知插件
-            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,1,2)
+            ##生成文件后通知插件
+            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,file_name,1,2)
             if bcancel_exec:return  self.get_retinfo()
-            fil_ename=magics['codefilename']
+            file_name=magics['codefilename']
             if len(self.get_magicsbykey(magics,'noruncode'))>0:
                 bcancel_exec=True
                 return self.get_retinfo()
             ##编译文件前通知插件
-            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,2,1)
+            ##编译文件前通知插件
+            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,file_name,2,1)
             if bcancel_exec:return  self.get_retinfo()
             ##编译文件
-            bcancel_exec,retinfo,magics, code,fil_ename,retstr=self.__jkobj.do_compile_code(
-                return_code,fil_ename,magics,code, 
+            bcancel_exec,retinfo,magics, code,file_name,retstr=self.__jkobj.do_compile_code(
+                return_code,file_name,magics,code, 
                 silent, store_history,user_expressions, allow_stdin)
             if bcancel_exec:return  retinfo
             ##编译文件后通知插件
-            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,2,2)
+            ##编译文件后通知插件
+            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,file_name,2,2)
             if bcancel_exec:return  self.get_retinfo()
             if len(self.get_magicsbykey(magics,'onlycompile'))>0:
                 self._log("only run compile \n")
@@ -1259,16 +1267,18 @@ class MyMagics():
                 return retinfo
                 
             ##运行文件前通知插件
-            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,3,1)
+            ##运行文件前通知插件
+            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,file_name,3,1)
             if bcancel_exec:return self.get_retinfo()
             ##运行代码
-            self._logln("The process :"+fil_ename)
-            bcancel_exec,retinfo,magics, code,fil_ename,retstr=self.__jkobj.do_runcode(
-                return_code,fil_ename,magics,code, 
+            self._logln("The process :"+file_name)
+            bcancel_exec,retinfo,magics, code,file_name,retstr=self.__jkobj.do_runcode(
+                return_code,file_name,magics,code, 
                 silent, store_history,user_expressions, allow_stdin)
             if bcancel_exec:return retinfo
             ##文件执行结束后通知插件
-            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,3,3)
+            ##文件执行结束后通知插件
+            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,file_name,3,3)
             if bcancel_exec:return self.get_retinfo()
         except Exception as e:
             self._log(""+str(e),3)
@@ -1277,58 +1287,74 @@ class MyMagics():
                    user_expressions=None, allow_stdin=True):
         try:
             return_code=0
-            fil_ename=''
+            file_name=''
             outpath=''
             
             bcancel_exec,retinfo,magics, code=self.__jkobj.do_preexecute(
                 code, magics,
-                silent, store_history,user_expressions, allow_stdin)
+                silent, store_history,
+                user_expressions, allow_stdin)
             if bcancel_exec:return retinfo
             return_code=0
-            fil_ename=''
+            file_name=''
             
             ##生成文件前通知插件
-            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,1,1)
+            ##生成文件前通知插件
+            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,file_name,1,1)
             if bcancel_exec:return  self.get_retinfo()
             ##生成代码文件
-            bcancel_exec,retinfo,magics, code,fil_ename,class_filename,outpath,retstr=self.do_create_codefile(
+            bcancel_exec,retinfo,magics, code,\
+            file_name,class_filename,\
+            outpath,retstr=self.__jkobj.do_create_codefile(
                 magics,code, 
-                silent, store_history,user_expressions, allow_stdin)
+                silent, store_history,
+                user_expressions, allow_stdin)
             if bcancel_exec:return retinfo
             ##生成文件后通知插件
-            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,1,2)
+            ##生成文件后通知插件
+            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,file_name,1,2)
             if bcancel_exec:return  self.get_retinfo()
-            fil_ename=magics['codefilename']
             if len(self.get_magicsbykey(magics,'noruncode'))>0:
                 bcancel_exec=True
                 return self.get_retinfo()
             
             ##编译文件前通知插件
-            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,2,1)
+            ##编译文件前通知插件
+            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,file_name,2,1)
             if bcancel_exec:return  self.get_retinfo()
             ##编译文件
-            bcancel_exec,retinfo,magics, code,fil_ename,class_filename,outpath,retstr=self.__jkobj.do_compile_code(
-                return_code,fil_ename,magics,code, 
+            bcancel_exec,retinfo,magics, code,\
+            file_name,class_filename,\
+            outpath,retstr=self.__jkobj.do_compile_code(
+                return_code,file_name,magics,code, 
                 silent, store_history,user_expressions, allow_stdin)
             if bcancel_exec:return  self.get_retinfo()
             ##编译文件后通知插件
-            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,2,2)
+            ##编译文件后通知插件
+            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,file_name,2,2)
             if bcancel_exec:return  self.get_retinfo()
             if len(self.get_magicsbykey(magics,'onlycompile'))>0:
                 self._log("only run compile \n")
                 bcancel_exec=True
                 return retinfo
             ##运行文件前通知插件
-            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,3,1)
+            ##运行文件前通知插件
+            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,file_name,3,1)
             if bcancel_exec:return self.get_retinfo()
             ##运行代码
             self._logln("The process :"+class_filename)
-            bcancel_exec,retinfo,magics, code,fil_ename,retstr=self.__jkobj.do_runcode(
-                return_code,fil_ename,class_filename,outpath,magics,code, 
-                silent, store_history,user_expressions, allow_stdin)
+            bcancel_exec,retinfo,\
+            magics, code,\
+            file_name,retstr=self.__jkobj.do_runcode(
+                return_code,file_name,
+                class_filename,outpath,
+                magics,code, 
+                silent, store_history,
+                user_expressions, allow_stdin)
             if bcancel_exec:return retinfo
             ##文件执行结束后通知插件
-            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,3,3)
+            ##文件执行结束后通知插件
+            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,file_name,3,3)
             if bcancel_exec:return self.get_retinfo()
         except Exception as e:
             self._log("???"+str(e),3)
@@ -1343,45 +1369,49 @@ class MyMagics():
             if bcancel_exec:return retinfo
             
             return_code=0
-            fil_ename=''
+            file_name=''
             ##生成文件前通知插件
-            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,1,1)
+            ##生成文件前通知插件
+            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,file_name,1,1)
             if bcancel_exec:return  self.get_retinfo()
             ##生成代码文件
-            bcancel_exec,retinfo,magics, code,fil_ename,retstr=self.dor_create_codefile(
+            bcancel_exec,retinfo,magics, code,file_name,retstr=self.dor_create_codefile(
                 magics,code, 
                 silent, store_history,user_expressions, allow_stdin)
             if bcancel_exec:return retinfo
             ##生成文件后通知插件
-            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,1,2)
+            ##生成文件后通知插件
+            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,file_name,1,2)
             if bcancel_exec:return  self.get_retinfo()
-            fil_ename=magics['codefilename']
+            file_name=magics['codefilename']
             if len(self.get_magicsbykey(magics,'noruncode'))>0:
                 bcancel_exec=True
                 return self.get_retinfo()
             
             ##运行文件前通知插件
-            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,3,1)
+            ##运行文件前通知插件
+            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,file_name,3,1)
             if bcancel_exec:return self.get_retinfo()
             ##运行代码
-            self._logln("The process :"+fil_ename)
-            bcancel_exec,retinfo,magics, code,fil_ename,retstr=self.dor_runcode(
-                return_code,fil_ename,magics,code, 
+            self._logln("The process :"+file_name)
+            bcancel_exec,retinfo,magics, code,file_name,retstr=self.dor_runcode(
+                return_code,file_name,magics,code, 
                 silent, store_history,user_expressions, allow_stdin)
             if bcancel_exec:return retinfo
             ##文件执行结束后通知插件
-            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,3,3)
+            ##文件执行结束后通知插件
+            bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,file_name,3,3)
             if bcancel_exec:return self.get_retinfo()
         except Exception as e:
             self._log(""+str(e),3)
         return self.get_retinfo()
 ##
-    def dor_runcode(self,return_code,fil_ename,magics,code, silent, store_history=True,
+    def dor_runcode(self,return_code,file_name,magics,code, silent, store_history=True,
                     user_expressions=None, allow_stdin=True):    
         ##runprg
         ##runprgargs
         return_code=return_code
-        fil_ename=fil_ename
+        file_name=file_name
         bcancel_exec=False
         retinfo=self.get_retinfo()
         retstr=''
@@ -1395,7 +1425,7 @@ class MyMagics():
         self.g_rtsps[str(p.pid)]=p
         return_code=p.returncode
         ##代码启动后
-        bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,fil_ename,3,2)
+        bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,file_name,3,2)
         
         if len(self.addkey2dict(magics,'showpid'))>0:
             self._logln("The process PID:"+str(p.pid))
@@ -1407,23 +1437,23 @@ class MyMagics():
         ##代码运行结束
         if p.returncode != 0:
             self._logln("Executable exited with code {}".format(p.returncode),2)
-        return bcancel_exec,retinfo,magics, code,fil_ename,retstr
+        return bcancel_exec,retinfo,magics, code,file_name,retstr
     def dor_create_codefile(self,magics,code, silent, store_history=True,
                     user_expressions=None, allow_stdin=True):    
         ##runprg
         ##runprgargs
         return_code=0
-        fil_ename=''
+        file_name=''
         bcancel_exec=False
         retinfo=self.get_retinfo()
         retstr=''
         ##调生成文件前接口
         source_file=self.create_codetemp_file(magics,code,suffix='.sh')
         newsrcfilename=source_file.name
-        fil_ename=newsrcfilename
+        file_name=newsrcfilename
         return_code=True
         
-        return bcancel_exec,retinfo,magics, code,fil_ename,retstr
+        return bcancel_exec,retinfo,magics, code,file_name,retstr
     def dor_preexecute(self,code,magics,silent, store_history=True,
                 user_expressions=None, allow_stdin=False):        
         ##runprg
@@ -1556,13 +1586,13 @@ class MyMagics():
             self.cleanup_files()
             self.do_atexit(magics)
             return retinfo
-        if(self.runfiletype=='script'):
+        if(self.__jkobj.get_runfiletype()=='script'):
             retinfo=self.do_execute_script(code, magics,silent, store_history,
                    user_expressions, allow_stdin)
-        elif(self.runfiletype=='class'):
+        elif(self.__jkobj.get_runfiletype()=='class'):
             retinfo=self.do_execute_class(code, magics,silent, store_history,
                    user_expressions, allow_stdin=True)
-        elif(self.runfiletype=='exe'):
+        elif(self.__jkobj.get_runfiletype()=='exe'):
             retinfo=self.do_execute_script(code, magics,silent, store_history,
                    user_expressions, allow_stdin)
         

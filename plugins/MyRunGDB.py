@@ -6,11 +6,11 @@ class MyRunGDB(IBtag):
     def getName(self) -> str:
         # self.kobj._write_to_stdout("setKernelobj setKernelobj setKernelobj\n")
         
-        return 'MyShowpid'
+        return 'MyRunGDB'
     def getAuthor(self) -> str:
         return 'Author'
     def getIntroduction(self) -> str:
-        return 'MyShowpid'
+        return 'MyRunGDB'
     def getPriority(self)->int:
         return 0
     def getExcludeID(self)->List[str]:
