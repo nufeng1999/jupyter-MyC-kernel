@@ -518,6 +518,8 @@ class MyMagics():
     def get_kernelinfo(self):
         self.kernelinfo=self.__jkobj.get_kernelinfo()
         return self.kernelinfo
+    def get_language_info(self):
+        return self.__jkobj.get_language_info()
     def reset(self):
         self.files =None
         self.first_magics=None

@@ -85,7 +85,7 @@ class MyFileforlist(IStag):
                 newsrcfilename = os.path.join(os.path.abspath(''),newsrcfilename)
                 if os.path.exists(newsrcfilename):
                     if magics!=None and len(self.kobj.addkey2dict(magics,'overwritefile'))<1:
-                        newsrcfilename +=(".new"+self.kobj.language_info['file_extension'])
+                        newsrcfilename +=(".new"+self.kobj.get_language_info()['file_extension'])
                 if not os.path.exists(os.path.dirname(newsrcfilename)) :
                     os.makedirs(os.path.dirname(newsrcfilename))
                 if index==0:

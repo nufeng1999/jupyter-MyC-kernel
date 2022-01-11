@@ -1,6 +1,6 @@
 ##
 from ipykernel.kernelbase import Kernel
-from MyMagics import * 
+from .MyMagics import * 
 from plugins._filter2_magics import Magics
 import platform
 import sys
@@ -31,6 +31,8 @@ class MyKernel(Kernel):
         self.runfiletype='script'
         self.kernelinfo='[MyKernel]'
         self.mymagics=MyMagics(jkobj=self,runfiletype=self.runfiletype)
+    def get_language_info(self):
+        return self.language_info
     def get_runfiletype(self)->str:
         return self.runfiletype
     def get_kernelinfo(self)->str:
