@@ -1,6 +1,6 @@
 ##
 from ipykernel.kernelbase import Kernel
-from .MyMagics import * 
+from MyMagics import * 
 from plugins._filter2_magics import Magics
 import platform
 import sys

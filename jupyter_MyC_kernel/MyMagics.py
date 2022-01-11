@@ -38,8 +38,10 @@ import importlib
 import importlib.util
 import inspect
 from . import ipynbfile
-from plugins.ISpecialID import IStag,IDtag,IBtag,ITag,ICodePreproc
+from plugins import ISpecialID
+# from plugins.ISpecialID import IStag,IDtag,IBtag,ITag,ICodePreproc
 from plugins._filter2_magics import Magics
+from .Mymacroprocessor import Mymacroprocessor
 try:
     zerorpc=__import__("zerorpc")
     # import zerorpc
@@ -381,7 +383,6 @@ class RealTimeSubprocess(subprocess.Popen):
                 time.sleep(1/1000)
                 continue
 class MyMagics():
-    
     main_head = "\n" \
             "\n" \
             "int main(List<String> arguments){\n"
@@ -448,7 +449,6 @@ class MyMagics():
         self.first_cellcodeinfo=None
         self.flock=None
         self._allow_stdin = True
-        
         self.readOnlyFileSystem = False
         self.bufferedOutput = True
         self.linkMaths = True # always link math library
@@ -467,7 +467,6 @@ class MyMagics():
         self.jinja2_env = Environment()
         self.g_rtsps={}
         self.g_chkreplexit=True
-        
         self.ISplugins={"0":[],
             "1":[],
             "2":[],
@@ -509,7 +508,6 @@ class MyMagics():
             "8":[],
             "9":[]}
         self.plugins=[self.ISplugins,self.IDplugins,self.IBplugins]
-    
         self.chk_replexit_thread = Thread(target=self.chk_replexit, args=(self.g_rtsps))
         self.chk_replexit_thread.daemon = True
         self.chk_replexit_thread.start()
@@ -664,11 +662,11 @@ class MyMagics():
         if line==None or line=='':return ''
         line=self.replacemany(line.strip(),(' '),'')
         if '=\'\'\'' in line: 
-            self.issstr=True
+            self.__issstr=True
             return False
         if '\'\'\'' in line: 
-            if self.issstr:return False
-            self.issstr=False
+            if self.__issstr:return False
+            self.__issstr=False
             return True
         return line.lstrip().startswith('\'\'\'')
     def _is_sqm_end(self,line):
@@ -676,7 +674,6 @@ class MyMagics():
         if self.__issqm:
             return line.rstrip().endswith('\'\'\'')
         return False
-    
     def cleanCdqm(self,code):
         return re.sub(r"/\*.*?\*/", "", code, flags=re.M|re.S)
     def cleanCnotes(self,code):
@@ -685,7 +682,6 @@ class MyMagics():
         ##tmpCode = re.sub(r"//.*", "", line)
         ##tmpCode = re.sub(r"/\*.*?\*/", "", tmpCode, flags=re.M|re.S)
         return '' if (not self._is_specialID(line)) and (line.lstrip().startswith('## ') or line.lstrip().startswith('// ')) else line
-    
     def cleandqmA(self,code):
         return re.sub(r"\"\"\".*?\"\"\"", "", code, flags=re.M|re.S)
     def cleandqm(self,line):
@@ -721,7 +717,6 @@ class MyMagics():
             return ''
         line= "" if self.__issqm else line
         return line
-    
     def cleantestcodeA(self,code):
         code=re.sub(r"\/\/test_begin.*?\/\/test_end", "", code, flags=re.M|re.S)
         return re.sub(r"\#\#test_begin.*?\#\#test_end", "", code, flags=re.M|re.S)
@@ -745,7 +740,6 @@ class MyMagics():
             return ''
         line= "" if self.__istestcode else line
         return line
-    
     def repl_listpid(self,cmd=None):
         if len(self.g_rtsps)>0: 
             self._write_to_stdout("--------All replpid--------\n")
@@ -1464,6 +1458,7 @@ class MyMagics():
 ##
     def do_execute(self, code, silent, store_history=True,
                    user_expressions=None, allow_stdin=True):
+        newcode=code
         if self.first_cellcodeinfo==None:
             self.first_cellcodeinfo={
                 "code":code, 
@@ -1472,7 +1467,13 @@ class MyMagics():
                 "user_expressions":user_expressions,
                 "allow_stdin":allow_stdin
             }
-        retinfo= self.do_executecode(code)
+        if silent==False:
+            try:
+                processor=Mymacroprocessor()
+                newcode=processor.pymprocessor(newcode)
+            except Exception as e:
+                self._log(""+str(e),3)
+        retinfo= self.do_executecode(newcode)
         self.do_atparentexit(self.first_magics)
         rpcsrvfollowcode=''
         if self.first_magics!=None:
@@ -1545,6 +1546,7 @@ class MyMagics():
     def do_atexit(self,magics):
         pass
     def do_executecode(self, code):
+        # code=processor.pymprocessor(code)
         silent=None
         store_history=True
         user_expressions=None
@@ -1846,13 +1848,13 @@ class MyMagics():
         try:
             obj.setKernelobj(obj,self)
             priority=obj.getPriority(obj)
-            if not inspect.isabstract(obj) and issubclass(obj,IStag):
+            if not inspect.isabstract(obj) and issubclass(obj,ISpecialID.IStag):
                 self.ISplugins[str(priority)]+=[obj]
-            elif not inspect.isabstract(obj) and issubclass(obj,IDtag):
+            elif not inspect.isabstract(obj) and issubclass(obj,ISpecialID.IDtag):
                 self.IDplugins[str(priority)]+=[obj]
-            elif not inspect.isabstract(obj) and issubclass(obj,IBtag):
+            elif not inspect.isabstract(obj) and issubclass(obj,ISpecialID.IBtag):
                 self.IBplugins[str(priority)]+=[obj]
-            elif not inspect.isabstract(obj) and issubclass(obj,ICodePreproc):
+            elif not inspect.isabstract(obj) and issubclass(obj,ISpecialID.ICodePreproc):
                 self.ICodePreprocs[str(priority)]+=[obj]
         except Exception as e:
             pass
@@ -1899,28 +1901,30 @@ class MyMagics():
         return newline
     def init_plugin(self):
         mypath = os.path.dirname(os.path.abspath(__file__))
-        idir=os.path.join(mypath,'../plugins')
+        idir=os.path.join(mypath,'plugins')
         sys.path.append(mypath)
-        sys.path.append(idir)
+        # sys.path.append(idir)
         for f in os.listdir(idir):
             if os.path.isfile(os.path.join(idir,f)):
                 try:
                     name=os.path.splitext(f)[0]
-                    if name!='pluginmng' and name!='kernel' and(spec := importlib.util.find_spec(name)) is not None:
-                        module = importlib.import_module(name)
+                    if name!='pluginmng' and name!='kernel' and(spec := importlib.util.find_spec("."+name,package="plugins")) is not None:
+                        module = importlib.import_module("."+name,package="plugins")
+                        # self._write_to_stdout("OK "+name+"\n")
                         for name1, obj in inspect.getmembers(module,
                             lambda obj: 
                                 callable(obj) 
                                 and inspect.isclass(obj) 
                                 and not inspect.isabstract(obj) 
-                                and issubclass(obj,ITag)
+                                and issubclass(obj,ISpecialID.ITag)
                                 ):
-                            # self._write_to_stdout("\n"+obj.__name__+"\n")
+                            # self._write_to_stdout("--"+obj.__name__+"\n")
                             self.pluginRegister(obj)
                     else:
                         pass
                 except Exception as e:
                     pass
+                    # self._write_to_stdout("\n"+str(e)+"\n")
                 finally:
                     pass
     def _start_gdb(self):

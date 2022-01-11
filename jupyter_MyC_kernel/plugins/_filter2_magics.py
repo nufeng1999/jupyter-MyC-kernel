@@ -2,7 +2,6 @@
 from math import exp
 from queue import Queue
 from threading import Thread
-    
 from ipykernel.kernelbase import Kernel
 from pexpect import replwrap, EOF
 from jinja2 import Environment, PackageLoader, select_autoescape,Template
@@ -34,7 +33,6 @@ class Magics():
     IDplugins=None
     IBplugins=None
     kobj=None
-    
     plugins=[ISplugins,IDplugins,IBplugins]
     def __init__(self,kobj,plugins:List,ICodePreprocs):
         self.kobj=kobj
@@ -57,7 +55,6 @@ class Magics():
             d={key:[]}
             magics.update(d)
         return magics[key]
-    
     def get_outencode(self,magics):
         encodestr=self.get_magicsSvalue(magics,"outencode")
         if len(encodestr)<1:
@@ -302,106 +299,117 @@ class Magics():
     def reset_filter(self):
         self.magics = {
               ##
+                '_mcmd':{
+                    'cmd':[
+                        'if',
+                        'ifdef',
+                        'ifndef',
+                        'elif',
+                        'else',
+                        'endif',
+                        'defined'
+                    ],
+                },
                 '_sline':{
-                  'package':'0',
-                  'public':'0'
+                    'package':'0',
+                    'public':'0'
                 },
                 '_slinef':{
-                  'package':[],
-                  'public':[]
+                    'package':[],
+                    'public':[]
                 },
                 '_bt':{
-                'cleartest':'',
-                'repllistpid':'',
-                'runinterm':'',
-                'replcmdmode':'',
-                'replprompt':'',
-                'rpcsrvfollowcode':'',
-                'stdout2fifo':'',
-                'fifo2stdin':'',
-                'discleannotes':''
+                    'cleartest':'',
+                    'repllistpid':'',
+                    'runinterm':'',
+                    'replcmdmode':'',
+                    'replprompt':'',
+                    'rpcsrvfollowcode':'',
+                    'stdout2fifo':'',
+                    'fifo2stdin':'',
+                    'discleannotes':''
                 },
                 '_st':{
-                'ldflags':[],
-                'cflags':[],
-                'switches':[],
-                'options':[],
-                'coptions':[],
-                'joptions':[],
-                'runmode':[],
-                'replsetip':[],
-                'replchildpid':"0",
-                'srvmode':"",
-                'srvurl':"",
-                'fifoname':"",
-                'fifofile':"",
-                'stdout->':'',
-                'stdin<-':'',
-                'stoprpcsrv':[],
-                'sendrpcmsg':[],
-                'srmafterexec':[],
-                'smafterexec':[],
-                'runforlist':'',
-                'runlist':[],
-                'assfile':[],
-                'pidcmd':[],
-                'term':[],
-                'fileencode':'UTF-8',
-                'outencode':'UTF-8',
-                'outputtype':'text/plain',
-                'cwd':'',
-                'log':[],
-                'loadurl':[],
-                'runprg':[],
-                'runprgargs':[],
-                'args':[]
+                    'ldflags':[],
+                    'cflags':[],
+                    'switches':[],
+                    'options':[],
+                    'coptions':[],
+                    'joptions':[],
+                    'runmode':[],
+                    'replsetip':[],
+                    'replchildpid':"0",
+                    'srvmode':"",
+                    'srvurl':"",
+                    'fifoname':"",
+                    'fifofile':"",
+                    'stdout->':'',
+                    'stdin<-':'',
+                    'stoprpcsrv':[],
+                    'sendrpcmsg':[],
+                    'srmafterexec':[],
+                    'smafterexec':[],
+                    'runforlist':'',
+                    'runlist':[],
+                    'assfile':[],
+                    'pidcmd':[],
+                    'term':[],
+                    'fileencode':'UTF-8',
+                    'outencode':'UTF-8',
+                    'outputtype':'text/plain',
+                    'cwd':'',
+                    'log':[],
+                    'loadurl':[],
+                    'runprg':[],
+                    'runprgargs':[],
+                    'args':[]
                 },
                 '_dt':{},
                 '_btf':{
-                'cleartest':[],
-                'repllistpid':[self.kobj.repl_listpid],
-                'runinterm':[],
-                'replcmdmode':[],
-                'replprompt':[],
-                'rpcsrvfollowcode':[],
-                'stdout2fifo':[],
-                'fifo2stdin':[],
-                'discleannotes':[]
+                    'cleartest':[],
+                    'repllistpid':[self.kobj.repl_listpid],
+                    'runinterm':[],
+                    'replcmdmode':[],
+                    'replprompt':[],
+                    'rpcsrvfollowcode':[],
+                    'stdout2fifo':[],
+                    'fifo2stdin':[],
+                    'discleannotes':[]
                 },
                 '_stf':{
-                'ldflags':[],
-                'cflags':[],
-                'switches':[],
-                'options':[],
-                'coptions':[],
-                'joptions':[],
-                'runmode':[],
-                'replsetip':[],
-                'replchildpid':[],
-                'srvmode':[],
-                'srvurl':[],
-                'fifoname':[],
-                'fifofile':[],
-                'stdout->':[],
-                'stdin<-':[],
-                'stoprpcsrv':[],
-                'sendrpcmsg':[],
-                'srmafterexec':[],
-                'smafterexec':[],
-                'runforlist':[],
-                'runlist':[],
-                'assfile':[],
-                'pidcmd':[],
-                'term':[],
-                'fileencode':[],
-                'outencode':[],
-                'outputtype':[],
-                'cwd':[],
-                'log':[],
-                'loadurl':[],
-                'runprg':[],
-                'runprgargs':[],
-                'args':[]
+                    'ldflags':[],
+                    'cflags':[],
+                    'switches':[],
+                    'options':[],
+                    'coptions':[],
+                    'joptions':[],
+                    'runmode':[],
+                    'replsetip':[],
+                    'replchildpid':[],
+                    'srvmode':[],
+                    'srvurl':[],
+                    'fifoname':[],
+                    'fifofile':[],
+                    'stdout->':[],
+                    'stdin<-':[],
+                    'stoprpcsrv':[],
+                    'sendrpcmsg':[],
+                    'srmafterexec':[],
+                    'smafterexec':[],
+                    'runforlist':[],
+                    'runlist':[],
+                    'assfile':[],
+                    'pidcmd':[],
+                    'term':[],
+                    'fileencode':[],
+                    'outencode':[],
+                    'outputtype':[],
+                    'cwd':[],
+                    'log':[],
+                    'loadurl':[],
+                    'runprg':[],
+                    'runprgargs':[],
+                    'args':[]
                 },
                 '_dtf':{},
                 'status':'',
@@ -498,7 +506,6 @@ class Magics():
         self.reset_filter()
         self.init_filter(self.magics)
         magics =self.magics
-        
         for line in code.splitlines():
             orgline=line
             if line==None or line.strip()=='': 
@@ -513,8 +520,6 @@ class Magics():
                 continue
             if self._is_specialID(line):
                 if self.call_btproc(magics,line):continue
- 
-                
                 for pkey,pvalue in self.IBplugins.items():
                     for pobj in pvalue:
                         newline=''
@@ -532,7 +537,6 @@ class Magics():
                     continue
                 key, value = line.strip()[3:].split(":", 1)
                 key = key.strip().lower()
-               
                 newline=self.call_stproc(magics,line,key,value)
                 if newline!=line and len(newline)>0:
                     actualCode += newline + '\n'

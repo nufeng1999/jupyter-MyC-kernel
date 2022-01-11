@@ -42,8 +42,10 @@ import importlib
 import importlib.util
 import inspect
 from . import ipynbfile
-from plugins.ISpecialID import IStag,IDtag,IBtag,ITag,ICodePreproc
+from plugins import ISpecialID
+# from plugins.ISpecialID import IStag,IDtag,IBtag,ITag,ICodePreproc
 from plugins._filter2_magics import Magics
+from .Mymacroprocessor import Mymacroprocessor
 try:
     zerorpc=__import__("zerorpc")
     # import zerorpc
