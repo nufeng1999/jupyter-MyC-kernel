@@ -1,5 +1,5 @@
 import re
-import os
+import os,sys
 class Mymacroprocessor():
     def __init__(self, *args, **kwargs):
         self.macrologiclines=[]
@@ -105,12 +105,13 @@ class Mymacroprocessor():
         return line.replace("#%", "",1).replace("//#", "",1)
     def ismacrostatement(self,line:str):
         if (line.lstrip().startswith('#%') or
-            line.lstrip().startswith('//%')):
+            line.lstrip().startswith('//#')):
             return True
         return False
     def ismif_begin(self,line):
         bret=False
         line=self.movtags(line)
+        # map(lambda lable: (if line.lstrip().startswith(lable):return True)  ,self.iflables)
         for lable in self.iflables:
             if line.lstrip().startswith(lable):
                 return True
@@ -179,7 +180,7 @@ class Mymacroprocessor():
             ret=self.getstartspace(line)+'if not self._isdefined("{0}"):'.format(varname)
         return ret
     def convert_ifdef(self,line:str):
-        line=movtags(line)
+        line=self.movtags(line)
         ret=''
         varname=''
         if line.lstrip().startswith('ifdef'):
@@ -219,7 +220,7 @@ class Mymacroprocessor():
         return realstatement
     def convert_undef(self,line:str):
         realstatement=''
-        line=movtags(line)
+        line=self.movtags(line)
         if line.lstrip().startswith('undef '):
             li=line.split()
             if len(li)<2:
@@ -358,12 +359,12 @@ class Mymacroprocessor():
         except Exception as e:
             print(e)
         return content
-if __name__=="__main__":
-    filename=''
-    if len(sys.argv)>1:
-        filename=sys.argv[0]
-    else:
-        reurn
-    pyp=Mymacroprocessor()
-    newdata=pyp.pyfmprocessor(filename)
-    print(newdata)
+# if __name__=="__main__":
+#     filename=''
+#     if len(sys.argv)>1:
+#         filename=sys.argv[0]
+#     else:
+#         reurn
+#     pyp=Mymacroprocessor()
+#     newdata=pyp.pyfmprocessor(filename)
+#     print(newdata)

@@ -221,7 +221,6 @@ class RealTimeSubprocess(subprocess.Popen):
         self._stderr_thread = Thread(target=RealTimeSubprocess._enqueue_output, args=(self.stderr, self._stderr_queue,self))
         self._stderr_thread.daemon = True
         self._stderr_thread.start()
-    
     @staticmethod
     def _enqueue_output(stream, queue,robj):
         for line in iter(lambda: stream.read(4096), b''):
@@ -245,9 +244,9 @@ class RealTimeSubprocess(subprocess.Popen):
         stderr_contents = read_all_from_queue(self._stderr_queue)
         if stderr_contents:
             if self.kobj!=None:
-                self.kobj._logln(stderr_contents.decode('UTF-8', errors='ignore'),3)
+                self.kobj._logln(stderr_contents.decode(self.outencode, errors='ignore'),3)
             else:
-                self._write_to_stderr(stderr_contents.decode('UTF-8', errors='ignore'))
+                self._write_to_stderr(stderr_contents.decode(self.outencode, errors='ignore'))
         stdout_contents = read_all_from_queue(self._stdout_queue)
         self.out_stdout_contents(stdout_contents,magics)
     def fifo_threadproc(self,fifoname=None,stdout2fifo=False,fifo2stdin=False):
@@ -1072,7 +1071,7 @@ class MyMagics():
             cstr=''
             for x in cmd: cstr+=x+" "
             self._logln(cstr)
-            if(magics!=None and (outencode==None or len(outencode)<0)):
+            if(magics!=None and (outencode==None or len(outencode)<1)):
                 outencode=self.get_outencode(magics)
             if(outencode==None or len(outencode)<0):
                 outencode='UTF-8'
