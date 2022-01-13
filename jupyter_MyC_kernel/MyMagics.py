@@ -79,7 +79,6 @@ class RPCsrv(object):
     def stopsrv(self):
         self.kobj.stop_srvmode()
         return
-    
 ##
 class CFileLock:
     def __init__(self, filename):
@@ -1092,6 +1091,11 @@ class MyMagics():
                 bstdout2fifo=True
             if fifo2stdin and len(fifoname)>0 and bstdout2fifo==False:
                 bfifo2stdin=True
+            rurl=self.get_magicsSvalue(magics,'srvmode')
+            if rurl!=None and len(rurl)>0 and self.__rpcsrv == None:
+                rpcsrvobj=RPCsrv(self,magics)
+                self._logln("readying start_srvmode")
+                self.start_srvmode(magics,rpcsrvobj)
             return RealTimeSubprocess(cmd,
                     self._write_to_stdout,
                     self._write_to_stderr,
@@ -1569,10 +1573,12 @@ class MyMagics():
             self.first_magics['_bt']=copy.deepcopy(magics['_bt'])
             self.first_magics['_dt']=copy.deepcopy(magics['_dt'])
             self.first_magics['_st']=copy.deepcopy(magics['_st'])
-        rurl=self.get_magicsSvalue(magics,'srvmode')
-        if rurl!=None and len(rurl)>0 and self.__rpcsrv == None:
-            rpcsrvobj=RPCsrv(self,magics)
-            self.start_srvmode(magics,rpcsrvobj)
+        # ## 启动RPC服务,如果已经启动则不再执行
+        # rurl=self.get_magicsSvalue(magics,'srvmode')
+        # if rurl!=None and len(rurl)>0 and self.__rpcsrv == None:
+        #     rpcsrvobj=RPCsrv(self,magics)
+        #     self._logln("readying start_srvmode")
+        #     self.start_srvmode(magics,rpcsrvobj)
         if (len(self.get_magicsbykey(magics,'onlyrunmagics'))>0 or len(self.get_magicsbykey(magics,'onlyruncmd'))>0):
             bcancel_exec=True
             self.do_atexit(magics)
@@ -1582,7 +1588,6 @@ class MyMagics():
             retinfo= self.send_replcmd(code, silent, store_history,user_expressions, allow_stdin)
             self.do_atexit(magics)
             return retinfo
-        
         if(len(self.get_magicsSvalue(magics,'runprg'))>0):
             retinfo=self.do_execute_runprg(code, magics,silent, store_history,
                    user_expressions, allow_stdin)
@@ -1598,7 +1603,6 @@ class MyMagics():
         elif(self.__jkobj.get_runfiletype()=='exe'):
             retinfo=self.do_execute_script(code, magics,silent, store_history,
                    user_expressions, allow_stdin)
-        
         self.do_atexit(magics)
         self.cleanup_files()
         return retinfo
@@ -1635,7 +1639,6 @@ class MyMagics():
     def sendmsg(self,fifoname,msg='',outencode='UTF-8'):
         if len(fifoname.strip())<1 or len(msg)<1 :return
         contents=msg.encode(outencode, errors='ignore')
-        
         self.sendmsg2sh(fifoname.strip(),4096,contents)
 ##
     def do_shutdown(self):
@@ -1767,14 +1770,13 @@ class MyMagics():
             except Exception as e:
                 break
         return bret
-     
     def start_srvmode(self,magics,rpcsrvobj,rpcurl=None):
         if self._rpcsrv_thread != None:
             return
         self._rpcsrv_thread = Thread(target=MyMagics.rpc_srv, args=(self,magics,rpcsrvobj,rpcurl))
         self._rpcsrv_thread.daemon = True
-        self._rpcsrv_thread.start()
         self._logln("srvmode start...")
+        self._rpcsrv_thread.start()
     def rpc_srv(kobj,magics,rpcsrvobj,rpcurl=None):
         rurl=rpcurl
         # kobj.__rpcsrv = None
@@ -1789,6 +1791,8 @@ class MyMagics():
             except Exception as e:
                 kobj._logln("start_srvmode err:"+str(e),3)
                 if kobj.__rpcsrv!=None :kobj.__rpcsrv.close()
+        else:
+            kobj._logln("srvmode err！",3)
         return 
     def stop_srvmode(self):
         if self.__rpcsrv!=None :

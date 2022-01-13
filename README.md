@@ -27,7 +27,7 @@ My minification kelnel of jupyter
 |[MyJava](https://github.com/nufeng1999/jupyter-MyJava-kernel)           |[MyKotlin](https://github.com/nufeng1999/jupyter-MyKotlin-kernel)       |
 |[MyNodejs](https://github.com/nufeng1999/jupyter-MyNodejs-kernel)       |[MyPython](https://github.com/nufeng1999/jupyter-MyPython-kernel)       |
 |[MyVala](https://github.com/nufeng1999/jupyter-MyVala-kernel)           |[MyVBScript](https://github.com/nufeng1999/jupyter-MyVBScript-kernel)   |
-|[MyWolframScript](https://github.com/nufeng1999/jupyter-MyWLS-kernel)   |[MyVBScript](https://github.com/nufeng1999/jupyter-MyHtml-kernel)       |  
+|[MyWolframScript](https://github.com/nufeng1999/jupyter-MyWLS-kernel)   |[MyHtml](https://github.com/nufeng1999/jupyter-MyHtml-kernel)           |  
 |[MyTypeScript](https://github.com/nufeng1999/jupyter-MyTypeScript-kernel)|[MyPowerShell](https://github.com/nufeng1999/jupyter-MyPS-kernel)      |
 |[MyBatch](https://github.com/nufeng1999/jupyter-MyBatch-kernel)         |[MyLua](https://github.com/nufeng1999/jupyter-MyLua-kernel)             |
 |[MyPerl](https://github.com/nufeng1999/jupyter-MyPerl-kernel)           |[MyLua](https://github.com/nufeng1999/jupyter-MySwift-kernel)           |
@@ -35,6 +35,7 @@ My minification kelnel of jupyter
 |[MyMake](https://github.com/nufeng1999/jupyter-MyMake-kernel)           |[MyRust](https://github.com/nufeng1999/jupyter-MyRust-kernel)           |
 |[MyRuby](https://github.com/nufeng1999/jupyter-MyRuby-kernel)           |[MyTcl](https://github.com/nufeng1999/jupyter-MyTcl-kernel)             |
 |[MyVimscript](https://github.com/nufeng1999/jupyter-MyVimscript-kernel) |[MyM4](https://github.com/nufeng1999/jupyter-MyM4-kernel)               |
+|[MyDot](https://github.com/nufeng1999/jupyter-MyDot-kernel)             |                                                                    |
 ----  
 ### Support label  
 #### Label  
