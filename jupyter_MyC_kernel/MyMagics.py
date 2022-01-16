@@ -1225,7 +1225,6 @@ class MyMagics():
                 code,magics, 
                 silent, store_history,user_expressions, allow_stdin)
             if bcancel_exec:return retinfo
-            
             return_code=0
             file_name=''
             retstr=''
@@ -1264,7 +1263,6 @@ class MyMagics():
                 self._log("only run compile \n")
                 bcancel_exec=True
                 return retinfo
-                
             ##运行文件前通知插件
             ##运行文件前通知插件
             bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,file_name,3,1)
@@ -1288,7 +1286,6 @@ class MyMagics():
             return_code=0
             file_name=''
             outpath=''
-            
             bcancel_exec,retinfo,magics, code=self.__jkobj.do_preexecute(
                 code, magics,
                 silent, store_history,
@@ -1296,7 +1293,6 @@ class MyMagics():
             if bcancel_exec:return retinfo
             return_code=0
             file_name=''
-            
             ##生成文件前通知插件
             ##生成文件前通知插件
             bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,file_name,1,1)
@@ -1316,7 +1312,6 @@ class MyMagics():
             if len(self.get_magicsbykey(magics,'noruncode'))>0:
                 bcancel_exec=True
                 return self.get_retinfo()
-            
             ##编译文件前通知插件
             ##编译文件前通知插件
             bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,file_name,2,1)
@@ -1366,7 +1361,6 @@ class MyMagics():
                 code,magics, 
                 silent, store_history,user_expressions, allow_stdin)
             if bcancel_exec:return retinfo
-            
             return_code=0
             file_name=''
             ##生成文件前通知插件
@@ -1386,7 +1380,6 @@ class MyMagics():
             if len(self.get_magicsbykey(magics,'noruncode'))>0:
                 bcancel_exec=True
                 return self.get_retinfo()
-            
             ##运行文件前通知插件
             ##运行文件前通知插件
             bcancel_exec,retstr=self.raise_plugin(code,magics,return_code,file_name,3,1)
@@ -1461,37 +1454,54 @@ class MyMagics():
         retinfo=self.get_retinfo()
         return bcancel_exec,retinfo,magics, code
 ##
-    def do_execute(self, code, silent, store_history=True,
-                   user_expressions=None, allow_stdin=True):
-        newcode=code
-        if self.first_cellcodeinfo==None:
-            self.first_cellcodeinfo={
-                "code":code, 
-                "silent":silent, 
-                "store_history":store_history,
-                "user_expressions":user_expressions,
-                "allow_stdin":allow_stdin
-            }
-        if silent==False:
-            try:
-                processor=Mymacroprocessor()
-                newcode=processor.pymprocessor(newcode)
-            except Exception as e:
-                self._log(""+str(e),3)
-        retinfo= self.do_executecode(newcode)
-        self.do_atparentexit(self.first_magics)
-        rpcsrvfollowcode=''
-        if self.first_magics!=None:
-            rpcsrvfollowcode=self.get_magicsBvalue(self.first_magics,'rpcsrvfollowcode')
-        if len(rpcsrvfollowcode)>0 and self.__rpcsrv != None:
-            self.stop_srvmode()
-        if self.__rpcsrv != None:
-            self._rpcsrv_thread.join()
-        self.__rpcsrv =None
-        self._rpcsrv_thread = None
-        return retinfo
-    def run_forlist(self,magics):
-        runforlist=self.get_magicsSvalue(magics,'runforlist')
+    def do_beforeparentrun(self,magics):
+        self.run_forlist(magics,name='prerunforlist')
+        self.run_assfile(magics,name='preassfile')
+    def do_beforerun(self,magics):
+        pass
+    def do_atparentexit(self,magics):
+        self.run_forlist(magics)
+        self.run_assfile(magics)
+        self.srmsgafterexec(magics)
+        self.smsgafterexec(magics)
+    def do_atexit(self,magics):
+        pass
+    def srmsgafterexec(self,magics):
+        srmafterexec=self.get_magicsSvalue(magics,'srmafterexec')
+        if len(srmafterexec)<1 :return
+        msg=''
+        rpcurl=''
+        outencode='UTF-8'
+        outencode=self.get_outencode(magics)
+        if(outencode==None or len(outencode)<0):outencode='UTF-8'
+        for sli in srmafterexec:
+            if len(sli.strip())<1:continue
+            li=sli.split(" ", 1)
+            if len(li)<2:continue
+            rpcurl=li[0]
+            msg=li[1]+"\n"
+            self.send_stdincmd(magics,rpcurl,msg)
+    def smsgafterexec(self,magics):
+        smafterexec=self.get_magicsSvalue(magics,'smafterexec')
+        if len(smafterexec)<1 :return
+        msg=''
+        fifoname=''
+        outencode='UTF-8'
+        outencode=self.get_outencode(magics)
+        if(outencode==None or len(outencode)<0):outencode='UTF-8'
+        for sli in smafterexec:
+            if len(sli.strip())<1:continue
+            li=sli.split(" ", 1)
+            if len(li)<2:continue
+            fifoname=li[0]
+            msg=li[1]+"\n"
+            self.sendmsg(fifoname,msg,outencode)
+    def sendmsg(self,fifoname,msg='',outencode='UTF-8'):
+        if len(fifoname.strip())<1 or len(msg)<1 :return
+        contents=msg.encode(outencode, errors='ignore')
+        self.sendmsg2sh(fifoname.strip(),4096,contents)
+    def run_forlist(self,magics,name='runforlist'):
+        runforlist=self.get_magicsSvalue(magics,name)
         if len(runforlist)>0:
             self._run_forlist(runforlist,magics,singlecell=False)
         return
@@ -1535,23 +1545,46 @@ class MyMagics():
                 self._log(str(e),2)
         os.chdir(origcwd)
         return 
-    def run_assfile(self,magics):
-        files=self.get_magicsSvalue(magics,'assfile')
+    def run_assfile(self,magics,name='assfile'):
+        files=self.get_magicsSvalue(magics,name)
         if(len(files)<1):return 
         self._run_forlist(files,magics)
         return
     def do_retryexeccode(self):
         if self.cellcodeinfo!=None:
             self.do_executecode(self.first_cellcodeinfo['code'])
-    def do_atparentexit(self,magics):
-        self.run_forlist(magics)
-        self.run_assfile(magics)
-        self.srmsgafterexec(magics)
-        self.smsgafterexec(magics)
-    def do_atexit(self,magics):
-        pass
+    def do_execute(self, code, silent, store_history=True,
+                   user_expressions=None, allow_stdin=True):
+        newcode=code
+        if self.first_cellcodeinfo==None:
+            self.first_cellcodeinfo={
+                "code":code, 
+                "silent":silent, 
+                "store_history":store_history,
+                "user_expressions":user_expressions,
+                "allow_stdin":allow_stdin
+            }
+        if silent==False:
+            try:
+                processor=Mymacroprocessor()
+                newcode=processor.pymprocessor(newcode)
+            except Exception as e:
+                self._log(""+str(e),3)
+        retinfo= self.do_executecode(newcode)
+        self.do_atparentexit(self.first_magics)
+        rpcsrvfollowcode=''
+        if self.first_magics!=None:
+            rpcsrvfollowcode=self.get_magicsBvalue(self.first_magics,'rpcsrvfollowcode')
+        if len(rpcsrvfollowcode)>0 and self.__rpcsrv != None:
+            self.stop_srvmode()
+        if self.__rpcsrv != None:
+            self._rpcsrv_thread.join()
+        self.__rpcsrv =None
+        self._rpcsrv_thread = None
+        return retinfo
     def do_executecode(self, code):
         # code=processor.pymprocessor(code)
+        # self.do_beforerun()
         silent=None
         store_history=True
         user_expressions=None
@@ -1573,6 +1606,8 @@ class MyMagics():
             self.first_magics['_bt']=copy.deepcopy(magics['_bt'])
             self.first_magics['_dt']=copy.deepcopy(magics['_dt'])
             self.first_magics['_st']=copy.deepcopy(magics['_st'])
+            self.do_beforeparentrun(magics)
+        self.do_beforerun(magics)
         # ## 启动RPC服务,如果已经启动则不再执行
         # rurl=self.get_magicsSvalue(magics,'srvmode')
         # if rurl!=None and len(rurl)>0 and self.__rpcsrv == None:
@@ -1606,40 +1641,6 @@ class MyMagics():
         self.do_atexit(magics)
         self.cleanup_files()
         return retinfo
-    def srmsgafterexec(self,magics):
-        srmafterexec=self.get_magicsSvalue(magics,'srmafterexec')
-        if len(srmafterexec)<1 :return
-        msg=''
-        rpcurl=''
-        outencode='UTF-8'
-        outencode=self.get_outencode(magics)
-        if(outencode==None or len(outencode)<0):outencode='UTF-8'
-        for sli in srmafterexec:
-            if len(sli.strip())<1:continue
-            li=sli.split(" ", 1)
-            if len(li)<2:continue
-            rpcurl=li[0]
-            msg=li[1]+"\n"
-            self.send_stdincmd(magics,rpcurl,msg)
-    def smsgafterexec(self,magics):
-        smafterexec=self.get_magicsSvalue(magics,'smafterexec')
-        if len(smafterexec)<1 :return
-        msg=''
-        fifoname=''
-        outencode='UTF-8'
-        outencode=self.get_outencode(magics)
-        if(outencode==None or len(outencode)<0):outencode='UTF-8'
-        for sli in smafterexec:
-            if len(sli.strip())<1:continue
-            li=sli.split(" ", 1)
-            if len(li)<2:continue
-            fifoname=li[0]
-            msg=li[1]+"\n"
-            self.sendmsg(fifoname,msg,outencode)
-    def sendmsg(self,fifoname,msg='',outencode='UTF-8'):
-        if len(fifoname.strip())<1 or len(msg)<1 :return
-        contents=msg.encode(outencode, errors='ignore')
-        self.sendmsg2sh(fifoname.strip(),4096,contents)
 ##
     def do_shutdown(self):
         self.g_chkreplexit=False
