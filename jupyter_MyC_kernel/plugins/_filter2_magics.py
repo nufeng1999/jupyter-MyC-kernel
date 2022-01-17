@@ -96,6 +96,50 @@ class Magics():
                 d={key:{}}
             magics.update(d)
         return magics[key]
+    def getstartspace(self,line:str):
+        pattern = re.compile(r'\S')
+        spacechar=' '
+        spacecount=0
+        if len(line)>0 :
+            m = pattern.search(line)
+            if m!=None:
+                spacecount=m.start(0)
+            else:
+                spacecount=len(line)
+        if spacecount<1:return ''
+        return spacechar*spacecount
+    def slfn_include(self,key,magics,line):
+        # self.kobj._logln("find "+key)
+        li=line.find(key)
+        if li<0:return ''
+        filename=line[li+9:]
+        # self.kobj._logln("_include filename "+filename)
+        content=self.kobj.readcodefile(filename,spacecount=0)
+        startspace=self.getstartspace(line)
+        if len(startspace)>0:
+            startspace=startspace[0]*2+startspace
+        index=0
+        newcontent=''
+        contents=content.splitlines()
+        ncontents=len(contents)
+        for cline in contents:
+            if index==0:
+                newcontent+=cline+'\n'
+                index+=1
+            else:
+                if index==ncontents-1:
+                    newcontent+=startspace+cline
+                else:
+                    newcontent+=startspace+cline+'\n'
+        newcontent=line[:li]+newcontent
+        # qline=self.kobj.replacemany(line,'; ', ';')
+        # qline=self.kobj.replacemany(qline,' ;', ';')
+        # qline= qline[:len(qline)-1]
+        # li=qline.strip().split()
+        # if(len(li)>1):
+        #     magics['_include'] = li[1].strip()
+        # self.kobj._logln("newcontent---- \n"+newcontent)
+        return newcontent
     def slfn_package(self,key,magics,line):
         qline=self.kobj.replacemany(line,'; ', ';')
         qline=self.kobj.replacemany(qline,' ;', ';')
@@ -277,6 +321,7 @@ class Magics():
             magics['_st']['args'] += [argument.strip('"')]
         return ''
     def init_filter(self,magics):
+        self.addmagicsSLkey(magics,'_include:','1',self.slfn_include)
         self.addmagicsSLkey(magics,'package','0',self.slfn_package)
         self.addmagicsSLkey(magics,'public','0',self.slfn_public)
         self.addmagicsSkey(magics,'ldflags',self.kfn_ldflags)
@@ -331,11 +376,13 @@ class Magics():
                 },
                 '_sline':{
                     'package':'0',
-                    'public':'0'
+                    'public':'0',
+                    '_include:':'1'
                 },
                 '_slinef':{
                     'package':[],
-                    'public':[]
+                    'public':[],
+                    '_include:':[]
                 },
                 '_bt':{
                     'cleartest':'',
