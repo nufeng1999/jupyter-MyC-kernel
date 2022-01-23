@@ -29,6 +29,7 @@ class MyFile(IStag):
         try:
             self.kobj.addkey2dict(magics,'file')
             if len(value)>0:
+                value=self.kobj.realpath(value)
                 magics[key] += [value[re.search(r'[^/]',value).start():]]
             else:
                 magics[key] +=['newfile']

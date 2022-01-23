@@ -37,6 +37,7 @@ class MyFileforlist(IStag):
                 newval=value.replace('$fnlist',li.strip()) 
                 ##self.kobj._logln(newval)
                 if len(newval)>0:
+                    newval=self.kobj.realpath(newval)
                     magics[key] += [newval[re.search(r'[^/]',newval).start():]]
                 else:
                     magics[key] +=['newfile']

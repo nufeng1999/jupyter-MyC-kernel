@@ -6,7 +6,6 @@ class MyInclude(IStag):
     kobj=None
     def getName(self) -> str:
         # self.kobj._write_to_stdout("setKernelobj setKernelobj setKernelobj\n")
-        
         return 'MyInclude'
     def getAuthor(self) -> str:
         return 'Author'
@@ -68,6 +67,7 @@ class MyInclude(IStag):
         filecode=''
         codelist1=None
         # self.kobj._log(os.path.join(os.path.abspath(''),filename+"\n"))
+        filename=self.kobj.realpath(filename)
         if not os.path.exists(filename):
             return ''
         with open(os.path.join(os.path.abspath(''),filename), 'r',encoding="UTF-8") as codef1:

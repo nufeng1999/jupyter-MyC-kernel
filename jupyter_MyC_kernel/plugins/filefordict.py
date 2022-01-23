@@ -34,6 +34,7 @@ class MyFilefordict(IStag):
             for key, val in dict:
                 newval=value.replace("$".join(key),val.strip()) 
                 if len(newval)>0:
+                    newval=self.kobj.realpath(newval)
                     magics[key] += [value[re.search(r'[^/]',newval).start():]]
                 else:
                     magics[key] +=['newfile']

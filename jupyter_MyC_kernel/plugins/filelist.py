@@ -1,4 +1,3 @@
-## %file:src/filelist.py
 from typing import Dict, Tuple, Sequence,List
 from plugins.ISpecialID import IStag,IDtag,IBtag,ITag
 import re
@@ -55,4 +54,3 @@ class MyFileList(IStag):
     def on_after_completion(self,returncode,execfile,magics)->bool:
         magics['filelist']=[]
         return False
-        

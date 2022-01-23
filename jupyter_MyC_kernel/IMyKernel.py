@@ -8,6 +8,7 @@ class IMyKernel():
     @abstractmethod
     def get_kernelinfo(self)->str:
         pass
+    @abstractmethod
     def get_language_info(self):
         pass
     @abstractmethod

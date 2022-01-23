@@ -565,14 +565,12 @@ class MyMagics():
         return self.addmagicsBkey(magics,key)
     def get_magicsbykey(self,magics:Dict,key:str):
         return self.addkey2dict(magics,key)
-    
     def addmagicsSLkey(self,magics:Dict,key:str,value=None,func=None):
         return self.addmagicskey2(magics=magics,key=key,type='_sline',func=func,value=value)
     def addmagicsSkey(self,magics:Dict,key:str,func=None):
         return self.addmagicskey2(magics=magics,key=key,type='_st',func=func)
     def addmagicsBkey(self,magics:Dict,key:str,value=None,func=None):
         return self.addmagicskey2(magics=magics,key=key,type='_bt',func=func,value=value)
-    
     def addmagicskey2(self,magics:Dict,key:str,type:str,func=None,value=None):
         if not magics[type].__contains__(key):
             ##添加 key
@@ -595,6 +593,13 @@ class MyMagics():
             magics.update(d)
         return magics[key]
     usleep = lambda x: time.sleep(x/1000000.0)
+    def realpath(self,path):
+        if len(path)>0:
+            if self.sys=="Windows" and not (self.subsys.startswith('MINGW') or self.subsys.startswith('CYGWIN')):
+                path=path.replace("/",os.path.sep)
+            else:
+                path=path.replace("\\",os.path.sep)
+        return path
     def replacemany(self,our_str, to_be_replaced:str, replace_with:str):
         while (to_be_replaced in our_str):
             our_str = our_str.replace(to_be_replaced, replace_with)

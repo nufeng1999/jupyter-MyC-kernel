@@ -1,4 +1,3 @@
-## %file:src/env.py
 from typing import Dict, Tuple, Sequence,List
 from plugins.ISpecialID import IStag,IDtag,IBtag,ITag
 import os
@@ -48,5 +47,3 @@ class Myenv(IStag):
         return False
     def on_after_completion(self,returncode,execfile,magics)->bool:
         return False
-
-    

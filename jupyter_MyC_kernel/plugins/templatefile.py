@@ -6,7 +6,6 @@ class MyTemplatefile(IStag):
     kobj=None
     def getName(self) -> str:
         # self.kobj._write_to_stdout("setKernelobj setKernelobj setKernelobj\n")
-        
         return 'MyTemplatefile'
     def getAuthor(self) -> str:
         return 'Author'
