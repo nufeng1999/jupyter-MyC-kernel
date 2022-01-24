@@ -687,9 +687,11 @@ class MyMagics():
         ##tmpCode = re.sub(r"//.*", "", line)
         ##tmpCode = re.sub(r"/\*.*?\*/", "", tmpCode, flags=re.M|re.S)
         return '' if (not self._is_specialID(line)) and (line.lstrip().startswith('## ') or line.lstrip().startswith('// ')) else line
+    def cleandqm(self,line):
+        return line
     def cleandqmA(self,code):
         return re.sub(r"\"\"\".*?\"\"\"", "", code, flags=re.M|re.S)
-    def cleandqm(self,line):
+    def cleandqmB(self,line):
         ##tmpCode = re.sub(r"\"\"\".*?\"\"\"", "", line, flags=re.M|re.S)
         if not self.__isdqm:
             istb=self._is_dqm_begin(line)
@@ -705,9 +707,11 @@ class MyMagics():
             return ''
         line= "" if self.__isdqm else line
         return line
+    def cleansqm(self,line):
+        return line
     def cleansqmA(self,code):
         return re.sub(r"\'\'\'.*?\'\'\'", "", code, flags=re.M|re.S)
-    def cleansqm(self,line):
+    def cleansqmB(self,line):
         if not self.__issqm:
             istb=self._is_sqm_begin(line)
             if istb: 
@@ -799,41 +803,6 @@ class MyMagics():
             source_file.write(code)
             source_file.flush()
         return source_file
-    def rawinput(self):
-        if len(self.__independent)>0:
-        #     return self.get_raw_input()
-        # elif len(self.__independent)>0:
-        #     ## 仅独立的
-            return sys.stdin.readline()
-        elif len(self.__independent)<1:
-            return self.get_raw_input()
-        # elif len(self.__independent)<1:
-        #     ## 非独立的
-        return self.get_raw_input()
-            
-    def sendresponse(self,contents,name='stdout',mimetype=None):
-        if mimetype==None:
-            # if len(self.get_mymagics().__independent)>0:
-            #     self.__jkobj.send_response(self.__jkobj.get_iopub_socket(), 'stream', {'name': name, 'text': contents})
-            # elif len(self.__independent)>0 and self.__jkobj==None:
-            #     ## 仅独立的
-            #     sys.stdout.write(contents)
-            #     sys.stdout.flush()
-            # elif len(self.get_mymagics().__independent)<1:
-            self.send_response(self.iopub_socket, 'stream', {'name': name, 'text': contents})
-            # elif len(self.__independent)<1 and self.__jkobj==None:
-            #     ## 非独立的
-            #     self.send_response(self.iopub_socket, 'stream', {'name': name, 'text': contents})
-        else:
-            # if len(self.get_mymagics().__independent)>0:
-            #     self.__jkobj.send_response(self.__jkobj.get_iopub_socket(), 'display_data', {'data': {mimetype:contents}, 'metadata': {mimetype:{}}})
-            # elif len(self.__independent)>0 and self.__jkobj==None:
-            #     sys.stdout.write(contents)
-            #     sys.stdout.flush()
-            # elif len(self.get_mymagics().__independent)<1:
-            #     self.__jkobj.send_response(self.__jkobj.get_iopub_socket(), 'display_data', {'data': {mimetype:contents}, 'metadata': {mimetype:{}}})
-            # elif len(self.__independent)<1 and self.__jkobj==None:
-            self.send_response(self.iopub_socket, 'display_data', {'data': {mimetype:contents}, 'metadata': {mimetype:{}}})
     def _log(self, output,level=1,outputtype='text/plain'):
         if self.__loglevel=='0': return
         streamname='stdout'
