@@ -2,7 +2,7 @@ from typing import Dict, Tuple, Sequence,List
 from plugins.ISpecialID import IStag,IDtag,IBtag,ITag
 import re
 import os
-from shutil import copyfile,move
+from shutil import copyfile,move,rmtree
 class MyFile(IStag):
     kobj=None
     def getName(self) -> str:
@@ -82,6 +82,10 @@ class MyFile(IStag):
                 if not os.path.exists(os.path.dirname(newsrcfilename)) :
                     os.makedirs(os.path.dirname(newsrcfilename))
                 if index==0:
+                    # content=self.kobj.readcodefile(srcfilename)
+                    # with open(newsrcfilename, 'w',encoding="UTF-8") as codef1:
+                    #     codef1.write(content)
+                    #     codef1.flush()
                     move(srcfilename,newsrcfilename)
                     fristfile=newsrcfilename
                     files[0]=newsrcfilename

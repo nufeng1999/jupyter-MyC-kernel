@@ -804,7 +804,7 @@ class MyMagics():
             source_file.flush()
         return source_file
     def _log(self, output,level=1,outputtype='text/plain'):
-        if self.__loglevel=='0': return
+        if self.__loglevel=='0':return
         streamname='stdout'
         if not self.silent:
             prestr=self.get_kernelinfo()+' Info:'
@@ -821,10 +821,16 @@ class MyMagics():
                 # self._write_display_data(mimetype=outputtype,contents=prestr+output)
                 # return
             # Send standard output
+            if self.__loglevel=='4':
+                prestr=self.get_kernelinfo()+':'
+                self._klog(prestr+output)
+                return
             stream_content = {'name': streamname, 'text': prestr+output}
             self.__jkobj.sendresponse(prestr+output,name=streamname)
     def _logln(self, output,level=1,outputtype='text/plain'):
         self._log(output+"\n",level=1,outputtype='text/plain')
+    def _klog(self,output):
+        print(output,file=sys.__stdout__)
     def _write_display_data(self,mimetype='text/html',contents=""):
         try:
             if mimetype.startswith('image'):
