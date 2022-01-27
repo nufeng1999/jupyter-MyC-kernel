@@ -1440,6 +1440,7 @@ class MyMagics():
     def do_beforerun(self,magics):
         pass
     def do_atparentexit(self,magics):
+        if magics==None:return
         self.run_forlist(magics)
         self.run_assfile(magics)
         self.srmsgafterexec(magics)
