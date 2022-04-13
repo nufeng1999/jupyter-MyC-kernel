@@ -38,6 +38,7 @@ My minification kelnel of jupyter
 |[MyRuby](https://github.com/nufeng1999/jupyter-MyRuby-kernel)           |[MyTcl](https://github.com/nufeng1999/jupyter-MyTcl-kernel)             |
 |[MyVimscript](https://github.com/nufeng1999/jupyter-MyVimscript-kernel) |[MyM4](https://github.com/nufeng1999/jupyter-MyM4-kernel)               |
 |[MyDot](https://github.com/nufeng1999/jupyter-MyDot-kernel)             |[Mermaid](https://github.com/nufeng1999/jupyter-MyMermaid-kernel)       |
+|[MyGradle](https://github.com/nufeng1999/jupyter-MyGradle-kernel)       | |
 ----  
 ### Support label  
 #### Label  
