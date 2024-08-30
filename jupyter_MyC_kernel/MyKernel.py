@@ -6,6 +6,7 @@ from .MyMagics import *
 from plugins._filter2_magics import Magics
 import platform
 import sys
+import os
 class MyKernel(Kernel):
     implementation = 'jupyter-MyPython-kernel'
     implementation_version = '1.0'
